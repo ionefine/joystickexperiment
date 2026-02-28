@@ -318,6 +318,263 @@ classdef je
             end
         end
 
+        % ===================== Alignment task =====================
+        function [offsetL, offsetR] = alignmentTask(whichStimuli, sID, varargin)
+            opts = je.parseAlignmentOptions(varargin{:});
+
+            screenRes = Screen('Rect', 0);
+            screenRes(3) = screenRes(3)/2;
+            screenCtr = screenRes(3:4)/2;
+            stereoMode = 4;
+
+            [penWidth, crossLength, boxSize] = je.alignmentStimulusParams(whichStimuli);
+
+            screens = Screen('Screens');
+            white = WhiteIndex(max(screens));
+            black = BlackIndex(max(screens));
+            grey = white/2;
+
+            if strcmpi(char(opts.useJoystick), 'y')
+                numGamepads = Gamepad('GetNumGamepads');
+                if numGamepads == 0
+                    error('GAMEPAD ERROR: gamepad not detected.');
+                end
+                names = Gamepad('GetGamepadNamesFromIndices', 1:numGamepads);
+                joystickIndex = je.selectJoystickIndex(names);
+                joystickBuffer = 9000;
+                joystickMiddle = 128;
+            else
+                KbName('UnifyKeyNames');
+                keys.escape = KbName('ESCAPE');
+                keys.left = KbName('LeftArrow');
+                keys.right = KbName('RightArrow');
+                keys.up = KbName('UpArrow');
+                keys.down = KbName('DownArrow');
+            end
+
+            if isempty(sID)
+                while true
+                    sID = input('Participant ID:   ', 's');
+                    if ~isempty(sID)
+                        break;
+                    end
+                end
+            end
+
+            if isempty(opts.eyeAdjust)
+                while true
+                    opts.eyeAdjust = input('Adjust the (L)eft or (R)ight screen? ', 's');
+                    if strcmpi(opts.eyeAdjust, 'l') || strcmpi(opts.eyeAdjust, 'r')
+                        break;
+                    end
+                end
+            end
+
+            if isempty(opts.useBgPattern)
+                while true
+                    opts.useBgPattern = input('Use background pattern to aid fusion (y/n)? ', 's');
+                    if strcmpi(opts.useBgPattern, 'y') || strcmpi(opts.useBgPattern, 'n')
+                        break;
+                    end
+                end
+            end
+
+            offsetL = [0 0];
+            offsetR = [0 0];
+
+            [window, ~] = Screen('OpenWindow', 0, grey, [], [], [], stereoMode);
+            ifi = Screen('GetFlipInterval', window);
+            waitframes = 1;
+
+            nPatternDots = 800;
+            maxWindow = screenRes(3);
+            patternDots = randi(maxWindow, 2, nPatternDots) - maxWindow/2;
+            dotSize = 30;
+            dotCol = grey*.5;
+
+            if strcmpi(char(opts.addFlicker), 'y')
+                numSecs = 1;
+                waitframes = round(numSecs / ifi);
+            end
+
+            vbl = Screen('Flip', window);
+            HideCursor;
+            ListenChar(2);
+            endTask = false;
+
+            cleanupObj = onCleanup(@() je.cleanupAlignmentTask(window)); %#ok<NASGU>
+
+            while ~endTask
+                Screen('SelectStereoDrawBuffer', window, 0);
+                if strcmpi(char(opts.useBgPattern), 'y')
+                    Screen('DrawDots', window, patternDots, dotSize, dotCol, screenCtr+offsetL, 0);
+                end
+                je.drawAlignmentEye(window, screenCtr, offsetL, boxSize, penWidth, grey, black, whichStimuli, crossLength, 'left');
+
+                Screen('SelectStereoDrawBuffer', window, 1);
+                if strcmpi(char(opts.useBgPattern), 'y')
+                    Screen('DrawDots', window, patternDots, dotSize, dotCol, screenCtr+offsetR, 0);
+                end
+                je.drawAlignmentEye(window, screenCtr, offsetR, boxSize, penWidth, grey, black, whichStimuli, crossLength, 'right');
+
+                vbl = Screen('Flip', window, vbl + (waitframes - 0.5) * ifi);
+
+                if strcmpi(char(opts.useJoystick), 'y')
+                    while true
+                        if Gamepad('GetButton', joystickIndex, 2) == 1
+                            while true
+                                if Gamepad('GetButton', joystickIndex, 2) == 0
+                                    endTask = true;
+                                    break;
+                                end
+                            end
+                            break;
+                        elseif Gamepad('GetAxis', joystickIndex, 4) > (joystickMiddle + joystickBuffer)
+                            [offsetL, offsetR] = je.moveAlignmentOffset('down', opts.eyeAdjust, offsetL, offsetR);
+                            break;
+                        elseif Gamepad('GetAxis', joystickIndex, 4) < (joystickMiddle - joystickBuffer)
+                            [offsetL, offsetR] = je.moveAlignmentOffset('up', opts.eyeAdjust, offsetL, offsetR);
+                            break;
+                        elseif Gamepad('GetAxis', joystickIndex, 3) < (joystickMiddle - joystickBuffer)
+                            [offsetL, offsetR] = je.moveAlignmentOffset('left', opts.eyeAdjust, offsetL, offsetR);
+                            break;
+                        elseif Gamepad('GetAxis', joystickIndex, 3) > (joystickMiddle + joystickBuffer)
+                            [offsetL, offsetR] = je.moveAlignmentOffset('right', opts.eyeAdjust, offsetL, offsetR);
+                            break;
+                        end
+                    end
+                else
+                    [keyIsDown, ~, keyCode] = KbCheck();
+                    if keyIsDown
+                        key = find(keyCode, 1);
+                        if key == keys.left
+                            [offsetL, offsetR] = je.moveAlignmentOffset('left', opts.eyeAdjust, offsetL, offsetR);
+                        elseif key == keys.right
+                            [offsetL, offsetR] = je.moveAlignmentOffset('right', opts.eyeAdjust, offsetL, offsetR);
+                        elseif key == keys.up
+                            [offsetL, offsetR] = je.moveAlignmentOffset('up', opts.eyeAdjust, offsetL, offsetR);
+                        elseif key == keys.down
+                            [offsetL, offsetR] = je.moveAlignmentOffset('down', opts.eyeAdjust, offsetL, offsetR);
+                        elseif key == keys.escape
+                            endTask = true;
+                        end
+                    end
+                end
+            end
+
+            runtime = datestr(now);
+            outputDir = fullfile('Alignment_Output');
+            if ~exist(outputDir, 'dir')
+                mkdir(outputDir);
+            end
+
+            runnum = 1;
+            while exist(fullfile(outputDir, sprintf('%s-%d-coords.mat', sID, runnum)), 'file') ~= 0
+                runnum = runnum + 1;
+            end
+            save(fullfile(outputDir, sprintf('%s-%d-coords.mat', sID, runnum)), 'offsetL', 'offsetR', 'sID', 'runtime', 'whichStimuli');
+        end
+
+        function opts = parseAlignmentOptions(varargin)
+            opts = struct('eyeAdjust', [], 'useBgPattern', [], 'addFlicker', 'n', 'useJoystick', 'n');
+            i = 1;
+            while i <= numel(varargin)
+                key = string(varargin{i});
+                if i == numel(varargin)
+                    break;
+                end
+                value = varargin{i+1};
+                switch lower(key)
+                    case "eyeadjust"
+                        opts.eyeAdjust = value;
+                    case "usebgpattern"
+                        opts.useBgPattern = value;
+                    case "addflicker"
+                        opts.addFlicker = value;
+                    case "usejoystick"
+                        opts.useJoystick = value;
+                end
+                i = i + 2;
+            end
+        end
+
+        function [penWidth, crossLength, boxSize] = alignmentStimulusParams(whichStimuli)
+            if isempty(whichStimuli)
+                error('whichStimuli is required. Use "cornermatch" or "crossinbox".');
+            end
+
+            switch lower(whichStimuli)
+                case {'cornermatch','crossinbox'}
+                    penWidth = 10;
+                    crossLength = 50;
+                    boxSize = 300;
+                otherwise
+                    error('Unknown stimulus type: %s', whichStimuli);
+            end
+        end
+
+        function drawAlignmentEye(window, screenCtr, offset, boxSize, penWidth, grey, black, whichStimuli, crossLength, whichEye)
+            Screen('FillRect', window, grey, [screenCtr(1)-boxSize/2+offset(1), screenCtr(2)-boxSize/2+offset(2), screenCtr(1)+boxSize/2+offset(1), screenCtr(2)+boxSize/2+offset(2)], penWidth);
+            Screen('FrameRect', window, black, [screenCtr(1)-boxSize/2+offset(1), screenCtr(2)-boxSize/2+offset(2), screenCtr(1)+boxSize/2+offset(1), screenCtr(2)+boxSize/2+offset(2)], penWidth);
+
+            switch lower(whichStimuli)
+                case 'cornermatch'
+                    if strcmpi(whichEye, 'left')
+                        lines = [-crossLength, 0, 0, 0; 0, 0, 0, crossLength];
+                    else
+                        lines = [crossLength, 0, 0, 0; 0, 0, 0, -crossLength];
+                    end
+                case 'crossinbox'
+                    if strcmpi(whichEye, 'left')
+                        lines = [-crossLength, crossLength, 0, 0; 0, 0, -crossLength, crossLength];
+                    else
+                        lines = [-crossLength*2, -crossLength, crossLength, crossLength*2, 0, 0, 0, 0; 0, 0, 0, 0, -crossLength*2, -crossLength, crossLength, crossLength*2];
+                    end
+                otherwise
+                    error('Unknown stimulus type: %s', whichStimuli);
+            end
+
+            Screen('DrawLines', window, lines, penWidth, black, screenCtr+offset);
+            Screen('DrawDots', window, [0 0], penWidth*1.5, black, screenCtr+offset, 1);
+            Screen('DrawDots', window, [0 0], penWidth*.7, [255 0 0], screenCtr+offset, 1);
+        end
+
+        function [offsetL, offsetR] = moveAlignmentOffset(direction, eyeAdjust, offsetL, offsetR)
+            switch lower(direction)
+                case 'up'
+                    delta = [0 -1];
+                case 'down'
+                    delta = [0 1];
+                case 'left'
+                    delta = [1 0];
+                case 'right'
+                    delta = [-1 0];
+                otherwise
+                    delta = [0 0];
+            end
+
+            if strcmpi(eyeAdjust, 'l')
+                offsetL = offsetL + delta;
+            elseif strcmpi(eyeAdjust, 'r')
+                offsetR = offsetR + delta;
+            end
+        end
+
+        function cleanupAlignmentTask(window)
+            try
+                if exist('window', 'var') && ~isempty(window)
+                    Screen('Close', window);
+                end
+            catch
+            end
+            try
+                Screen('CloseAll');
+            catch
+            end
+            ListenChar(0);
+            ShowCursor;
+        end
+
         % ===================== UI =====================
         function showInterRunScreen(ptb, session, runsComplete, totalRuns, stim, display, opts)
             if opts.user_controlled
