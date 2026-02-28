@@ -211,7 +211,9 @@ classdef je
             end
 
             [ptb.win, ptb.winRect] = PsychImaging('OpenWindow', screenNumber, 128, [], [], 2, stereoMode);
-            display.resolutionPx = [ptb.winRect(4) ptb.winRect(3)];
+            % display.resolutionPx = [screenWidthPx screenHeightPx]
+            % i.e., [number of horizontal pixels, number of vertical pixels]
+            display.resolutionPx = [ptb.winRect(3) ptb.winRect(4)];
             % Gamma
             if nargin >= 3 && ~isempty(gammaTable)
                 Screen('LoadNormalizedGammaTable', ptb.win, gammaTable);
