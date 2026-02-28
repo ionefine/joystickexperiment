@@ -20,6 +20,7 @@ opts.assertTol           = 1e-10;  % float tolerance for sanity check
 % user-controlled mode is binocular playback only
 if opts.user_controlled
     opts.isBinocularPlayback = true;
+    opts.enableFeedback = false;
 end
 
 if opts.user_controlled == opts.computer_controlled
