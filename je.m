@@ -12,6 +12,10 @@ classdef je
 
     methods (Static)
 
+        function [offsetL, offsetR] = alignmentTask(whichStimuli, sID, varargin)
+            [offsetL, offsetR] = je_alignmentTask_impl(whichStimuli, sID, varargin{:});
+        end
+
         % ===================== Params =====================
         function [stim, display] = joystickPsychoParams(opts)
             % Refactor of the JoystickPsychoParams script (function-like, no workspace side effects)

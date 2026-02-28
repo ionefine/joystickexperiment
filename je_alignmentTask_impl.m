@@ -1,4 +1,4 @@
-function [offsetL, offsetR] = alignment_task(whichStimuli, sID, varargin)
+function [offsetL, offsetR] = je_alignmentTask_impl(whichStimuli, sID, varargin)
 %% function: alignment_task
 %
 % Inputs:
