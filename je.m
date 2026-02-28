@@ -1065,7 +1065,7 @@ end
             %Written 11/1/07 gmb zre
 
             %Calculate pixel size
-            pixSize = display.widthCm/display.resolutionPx(1);   %cm/pix
+            pixSize = display.widthCm/max(display.resolutionPx);   %cm/pix
             sz = 2*display.distanceCm*tan(pi.*ang/(2*180));  %cm
             pix = round(sz/pixSize);   %pix
 
