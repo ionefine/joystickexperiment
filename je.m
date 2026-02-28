@@ -251,7 +251,7 @@ classdef je
                     error('No gamepad/joystick detected.');
                 end
                 names = Gamepad('GetGamepadNamesFromIndices', 1:numPads);
-                ptb.joystickIndex = NaturalScenesJoystickExperiment.selectJoystickIndex(names);
+                ptb.joystickIndex = je.selectJoystickIndex(names);
 
                 % Axis mapping guess (you can change after a quick test)
                 ptb.input.axisMap = struct('x',1,'y',2,'slider',3);
@@ -262,13 +262,13 @@ classdef je
             idx = [];
             for i = 1:numel(gamepadNames)
                 nm = lower(gamepadNames{i});
-                if contains(nm, 'thrustmaster') && contains(nm, 'twcs')
+                if contains(nm, 'thrustmaster') && (contains(nm, 'pro') || contains(nm, 't.16000m') || contains(nm, '16000'))
                     idx = i;
                     break;
                 end
             end
             if isempty(idx)
-                idx = 1; % fallback
+                error('Thrustmaster Pro joystick not found. Detected devices: %s', strjoin(gamepadNames, ', '));
             end
         end
 
@@ -320,12 +320,12 @@ classdef je
 
         % ===================== UI =====================
         function showInterRunScreen(ptb, session, runsComplete, totalRuns, stim, display, opts)
-            if isfield(session,'opts') && isfield(session.opts,'user_controlled') && session.opts.user_controlled
-                line1 = 'YOU control the contrast with the joystick.';
-                line2 = 'Move the control to adjust contrast.';
+            if isfield(opts,'user_controlled') && opts.user_controlled
+                line1 = 'YOU control the contrast with the Thrustmaster Pro slider.';
+                line2 = 'Move the slider to adjust contrast. Use keyboard for buttons.';
             else
                 line1 = 'The COMPUTER is controlling the contrast.';
-                line2 = 'Use the slider to REPORT what you see.';
+                line2 = 'Use the Thrustmaster Pro slider to REPORT what you see.';
             end
 
             msg = {
@@ -436,10 +436,10 @@ classdef je
             % Returns:
             %   state.x, state.y    in [-1, +1] (approx)
             %   state.slider01      in [0, 1] (approx; normalized)
-            %   state.buttons       raw buttons (bitmask on Windows; vector on others)
+            %   state.buttons       intentionally empty (buttons are read from keyboard)
 
             if strcmp(ptb.input.mode, 'winjoystickmex')
-                [x, y, z, buttons] = WinJoystickMex(ptb.input.joyId);
+                [x, y, z, ~] = WinJoystickMex(ptb.input.joyId);
 
                 % WinJoystickMex typically returns axes already roughly in [-1..+1],
                 % but different drivers/devices can vary. This keeps it robust.
@@ -450,7 +450,7 @@ classdef je
                 % Convert [-1..+1] -> [0..1]
                 state.slider01 = (je.clampToUnit(z) + 1) / 2;
 
-                state.buttons = buttons; % bitmask
+                state.buttons = []; % buttons are handled via keyboard
 
             else
                 j = ptb.joystickIndex;
@@ -462,7 +462,7 @@ classdef je
                 slider = Gamepad('GetAxis', j, ax.slider);
                 state.slider01 = (je.clampToUnit(slider) + 1) / 2;
 
-                state.buttons = []; % fill if you need buttons too
+                state.buttons = []; % buttons are handled via keyboard
             end
         end
 
