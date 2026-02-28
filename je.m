@@ -698,7 +698,7 @@ classdef je
         function state = readThrustmaster(ptb)
             % Returns:
             %   state.x, state.y    in [-1, +1] (approx)
-            %   state.slider01      in [0, 1] (approx; normalized)
+            %   state.slider01      in [0, 1] (normalized)
             %   state.buttons       intentionally empty (buttons are read from keyboard)
 
             if strcmp(ptb.input.mode, 'winjoystickmex')
@@ -709,9 +709,8 @@ classdef je
                 state.x = je.clampToUnit(x);
                 state.y = je.clampToUnit(y);
 
-                % Treat z as the throttle/slider by default:
-                % Convert [-1..+1] -> [0..1]
-                state.slider01 = (je.clampToUnit(z) + 1) / 2;
+                % Treat z as the throttle/slider by default.
+                state.slider01 = je.normalizeSlider01(z);
 
                 state.joystickButtons = buttons; % bitmask from joystick
                 state.buttons = je.readKeyboardButtons();
@@ -724,7 +723,7 @@ classdef je
                 state.y = Gamepad('GetAxis', j, ax.y);
 
                 slider = Gamepad('GetAxis', j, ax.slider);
-                state.slider01 = (je.clampToUnit(slider) + 1) / 2;
+                state.slider01 = je.normalizeSlider01(slider);
 
                 state.joystickButtons = [];
                 state.buttons = je.readKeyboardButtons();
@@ -747,6 +746,45 @@ classdef je
         function v = clampToUnit(v)
             if isnan(v), v = 0; end
             v = max(-1, min(1, v));
+        end
+
+        function u01 = normalizeSlider01(v)
+            % Robustly map common joystick slider formats onto [0, 1].
+            % Devices/drivers may report slider as:
+            %   * [-1, 1]
+            %   * [0, 1]
+            %   * [0, N] integer-like (e.g. 255, 1023, 65535)
+            if isnan(v)
+                u01 = 0.5;
+                return;
+            end
+
+            if v >= -1 && v <= 1
+                % Distinguish [0,1] from [-1,1] to avoid compressing range to [0.5,1].
+                if v >= 0
+                    u01 = v;
+                else
+                    u01 = (v + 1) / 2;
+                end
+            else
+                % Positive raw integer-like ranges (common driver encodings).
+                if v <= 0
+                    u01 = 0;
+                elseif v <= 255
+                    u01 = v / 255;
+                elseif v <= 1023
+                    u01 = v / 1023;
+                elseif v <= 4095
+                    u01 = v / 4095;
+                elseif v <= 65535
+                    u01 = v / 65535;
+                else
+                    % Fallback when range is unknown: saturate to high end.
+                    u01 = 1;
+                end
+            end
+
+            u01 = max(0, min(1, u01));
         end
 
         % ===================== Core frame loop =====================
