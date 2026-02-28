@@ -51,6 +51,7 @@ classdef je
             display.screenIndex  = 0;
             display.stereoMode   = 4;
             display.waitFrames   = 1;
+            display.updateFrames = 1;
 
         end
 
@@ -749,52 +750,68 @@ classdef je
 
     nFrames = numel(stim.data.t);
     response = zeros(1, nFrames);   % will store user contrast (0..1)
+    updateFrames = 1;
+    if isfield(display, 'updateFrames') && ~isempty(display.updateFrames)
+        updateFrames = max(1, round(display.updateFrames));
+    end
 
     % Initialize joystick contrast state
     cUser = opts.contrast.start;
+    texL = [];
+    texR = [];
 
     tic;
     audio.lastBeepTimeSec = toc;
 
     for i = 1:nFrames
-        if ~hasFrame(vidObj)
-            vidObj.CurrentTime = 0;
-            disp('Rewinding movie.');
-        end
+        shouldUpdate = (i == 1) || (mod(i - 1, updateFrames) == 0);
 
-        frameRgb = readFrame(vidObj);
-        img = mean(frameRgb, 3) / 128 - 1;  % preserve original normalization
+        if shouldUpdate
+            if ~hasFrame(vidObj)
+                vidObj.CurrentTime = 0;
+                disp('Rewinding movie.');
+            end
 
-        % --------- Determine contrast for this frame ----------
-        if opts.user_controlled
-            st = je.readThrustmaster(ptb);
-            cNow = je.joystickToContrast(st, opts);
-            cUser = je.emaUpdate(cUser, cNow, opts.joy.smoothing);
+            frameRgb = readFrame(vidObj);
+            img = mean(frameRgb, 3) / 128 - 1;  % preserve original normalization
 
-            % Use same contrast both eyes by default
-            cL = cUser;
-            cR = cUser;
+            % --------- Determine contrast for this frame ----------
+            if opts.user_controlled
+                st = je.readThrustmaster(ptb);
+                cNow = je.joystickToContrast(st, opts);
+                cUser = je.emaUpdate(cUser, cNow, opts.joy.smoothing);
 
-            response(i) = cUser;   % store what participant set
+                % Use same contrast both eyes by default
+                cL = cUser;
+                cR = cUser;
+
+                response(i) = cUser;   % store what participant set
+            else
+                % Computer-controlled uses your precomputed timecourses
+                cL = stim.data.contrast(runIndex, i, 1);
+                cR = stim.data.contrast(runIndex, i, 2);
+
+                % If you still want a response trace in this mode, record slider:
+                st = je.readThrustmaster(ptb);
+                response(i) = st.slider01;
+            end
+            % -----------------------------------------------------
+
+            stimL = img * cL * 128 + 128;
+            stimR = img * cR * 128 + 128;
+
+            stimL = uint8(min(max(stimL, 0), 255));
+            stimR = uint8(min(max(stimR, 0), 255));
+
+            if ~isempty(texL)
+                Screen('Close', texL);
+                Screen('Close', texR);
+            end
+            texL = Screen('MakeTexture', ptb.win, stimL);
+            texR = Screen('MakeTexture', ptb.win, stimR);
         else
-            % Computer-controlled uses your precomputed timecourses
-            cL = stim.data.contrast(runIndex, i, 1);
-            cR = stim.data.contrast(runIndex, i, 2);
-
-            % If you still want a response trace in this mode, record slider:
-            st = je.readThrustmaster(ptb);
-            response(i) = st.slider01;
+            response(i) = response(max(i - 1, 1));
         end
-        % -----------------------------------------------------
-
-        stimL = img * cL * 128 + 128;
-        stimR = img * cR * 128 + 128;
-
-        stimL = uint8(min(max(stimL, 0), 255));
-        stimR = uint8(min(max(stimR, 0), 255));
-
-        texL = Screen('MakeTexture', ptb.win, stimL);
-        texR = Screen('MakeTexture', ptb.win, stimR);
 
         % Left eye
         Screen('SelectStereoDrawBuffer', ptb.win, 0);
@@ -810,9 +827,6 @@ classdef je
         Screen('FillRect', ptb.win, 0, stim.spatial.outerRect + [session.offsetRight session.offsetRight]);
         Screen('FillRect', ptb.win, 255, stim.spatial.innerRect + [session.offsetRight session.offsetRight]);
 
-        Screen('Close', texL);
-        Screen('Close', texR);
-
         if opts.enableFeedback
             audio = je.maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, i);
         end
@@ -824,6 +838,11 @@ classdef je
     timing = struct();
     timing.actualSec = toc;
     timing.expectedSec = max(stim.data.t);
+
+    if ~isempty(texL)
+        Screen('Close', texL);
+        Screen('Close', texR);
+    end
 end
 
         function audio = maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, frameIndex)
