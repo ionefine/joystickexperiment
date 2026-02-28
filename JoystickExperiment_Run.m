@@ -80,22 +80,12 @@ cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio));
 
 % ---------- Alignment ----------
 if opts.nonius
-<<<<<<< Updated upstream
     [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
         'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
         'useBgPattern', 'y', 'useJoystick', 'n', ...
         'window', ptb.win, 'ifi', display.ifi);
 end
 
-=======
-    addpath(paths.noniusDir);
-    [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
-        'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
-        'useBgPattern', 'y', 'useJoystick', 'n');
-end
-
-
->>>>>>> Stashed changes
 % ------------ Generate stimuli------------------
 stim = je.generateStimulusTimeCourses(stim, display, opts);
 
