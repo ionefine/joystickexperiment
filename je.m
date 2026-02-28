@@ -183,6 +183,41 @@ classdef je
             stim.spatial.fusionRect = CenterRect([0 0 framePx], winRect);
         end
 
+        function movieCache = preloadMovieFrames(vidObj)
+            % Decode and grayscale-convert frames once before the display loop.
+            % This avoids decode jitter (and dropped frames) during playback.
+            vidObj.CurrentTime = 0;
+
+            nApprox = max(1, floor(vidObj.Duration * vidObj.FrameRate));
+            frames = cell(1, nApprox);
+            k = 0;
+
+            while hasFrame(vidObj)
+                k = k + 1;
+                frameRgb = readFrame(vidObj);
+
+                if size(frameRgb, 3) == 3
+                    frameGray = uint8(mean(single(frameRgb), 3));
+                else
+                    frameGray = frameRgb;
+                end
+
+                if k > numel(frames)
+                    frames{end + 1} = frameGray; %#ok<AGROW>
+                else
+                    frames{k} = frameGray;
+                end
+            end
+
+            if k == 0
+                error('Movie contains zero decodable frames.');
+            end
+
+            movieCache = struct();
+            movieCache.frames = frames(1:k);
+            movieCache.nFrames = k;
+        end
+
         % ===================== PTB init / cleanup =====================
         function [display, ptb] = initPtb(display, textSize, gammaTable)
 
@@ -750,6 +785,17 @@ classdef je
     nFrames = numel(stim.data.t);
     response = zeros(1, nFrames);   % will store user contrast (0..1)
 
+    usePreload = isfield(opts, 'performance') && ...
+        isfield(opts.performance, 'preloadMovie') && ...
+        opts.performance.preloadMovie;
+
+    if usePreload
+        movieCache = je.preloadMovieFrames(vidObj);
+        movieFrameIdx = 1;
+    else
+        vidObj.CurrentTime = 0;
+    end
+
     % Initialize joystick contrast state
     cUser = opts.contrast.start;
 
@@ -757,13 +803,27 @@ classdef je
     audio.lastBeepTimeSec = toc;
 
     for i = 1:nFrames
-        if ~hasFrame(vidObj)
-            vidObj.CurrentTime = 0;
-            disp('Rewinding movie.');
+        if usePreload
+            frameGray = movieCache.frames{movieFrameIdx};
+            movieFrameIdx = movieFrameIdx + 1;
+            if movieFrameIdx > movieCache.nFrames
+                movieFrameIdx = 1;
+            end
+        else
+            if ~hasFrame(vidObj)
+                vidObj.CurrentTime = 0;
+                disp('Rewinding movie.');
+            end
+
+            frameRgb = readFrame(vidObj);
+            if size(frameRgb, 3) == 3
+                frameGray = uint8(mean(single(frameRgb), 3));
+            else
+                frameGray = frameRgb;
+            end
         end
 
-        frameRgb = readFrame(vidObj);
-        img = mean(frameRgb, 3) / 128 - 1;  % preserve original normalization
+        img = single(frameGray) / 128 - 1;  % preserve original normalization
 
         % --------- Determine contrast for this frame ----------
         if opts.user_controlled
@@ -787,14 +847,19 @@ classdef je
         end
         % -----------------------------------------------------
 
-        stimL = img * cL * 128 + 128;
-        stimR = img * cR * 128 + 128;
+        if abs(cL - cR) < eps
+            stimMono = uint8(min(max(img * cL * 128 + 128, 0), 255));
+            texL = Screen('MakeTexture', ptb.win, stimMono);
+            texR = texL;
+            sharedTexture = true;
+        else
+            stimL = uint8(min(max(img * cL * 128 + 128, 0), 255));
+            stimR = uint8(min(max(img * cR * 128 + 128, 0), 255));
 
-        stimL = uint8(min(max(stimL, 0), 255));
-        stimR = uint8(min(max(stimR, 0), 255));
-
-        texL = Screen('MakeTexture', ptb.win, stimL);
-        texR = Screen('MakeTexture', ptb.win, stimR);
+            texL = Screen('MakeTexture', ptb.win, stimL);
+            texR = Screen('MakeTexture', ptb.win, stimR);
+            sharedTexture = false;
+        end
 
         % Left eye
         Screen('SelectStereoDrawBuffer', ptb.win, 0);
@@ -811,7 +876,9 @@ classdef je
         Screen('FillRect', ptb.win, 255, stim.spatial.innerRect + [session.offsetRight session.offsetRight]);
 
         Screen('Close', texL);
-        Screen('Close', texR);
+        if ~sharedTexture
+            Screen('Close', texR);
+        end
 
         if opts.enableFeedback
             audio = je.maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, i);
