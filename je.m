@@ -923,7 +923,7 @@ end
             % Frame counts
             nFramesPre  = round(stim.temporal.DurPre * display.frameRateHz);
             nFramesBino = round(stim.temporal.DurBinoCycle* display.frameRateHz);
-            nFramesDich = round(stim.temporal.MainDur * display.frameRateHz);
+            nFramesDich = round(stim.temporal.DichDur * display.frameRateHz);
             tDich = (0:(nFramesDich-1)) / display.frameRateHz;  % time vector for the dichoptic/monocular bit
 
             nFramesTotal = nFramesPre + nFramesBino + nFramesDich;
