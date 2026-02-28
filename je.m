@@ -590,7 +590,7 @@ end
             %
             % Inputs
             %   hz.Slow, hz.Fast : temporal frequencies (Hz)
-            %   stim.duration    : duration of main segment (seconds)
+            %   stim.duration    : duration of dichoptic segment (seconds)
             %
             % Output
             %   config : struct describing each run:
@@ -651,10 +651,10 @@ end
             % Frame counts
             nFramesPre  = round(stim.temporal.DurPre * display.frameRateHz);
             nFramesBino = round(stim.temporal.DurBinoCycle* display.frameRateHz);
-            nFramesMain = round(stim.temporal.MainDur * display.frameRateHz);
-            tMain = (0:(nFramesMain-1)) / display.frameRateHz;  % time vector for the dichoptic/monocular bit
+            nFramesDich = round(stim.temporal.MainDur * display.frameRateHz);
+            tDich = (0:(nFramesDich-1)) / display.frameRateHz;  % time vector for the dichoptic/monocular bit
 
-            nFramesTotal = nFramesPre + nFramesBino + nFramesMain;
+            nFramesTotal = nFramesPre + nFramesBino + nFramesDich;
             tTotal =  (0:(nFramesTotal-1)) / display.frameRateHz;   % time vector including pre and bino
             stim.data.contrast = zeros(nruns, nFramesTotal, 2);
             stim.data.t = tTotal;
@@ -683,28 +683,28 @@ end
             if ~opts.isBinocularPlayback
                 for runNum = 1:nruns
 
-                    tempFast = (sin(2*pi*tMain / stim.temporal.HzFastCycle) + 1) / 2;
-                    tempSlow = (sin(2*pi*tMain / stim.temporal.HzSlowCycle) + 1) / 2;
+                    tempFast = (sin(2*pi*tDich / stim.temporal.HzFastCycle) + 1) / 2;
+                    tempSlow = (sin(2*pi*tDich / stim.temporal.HzSlowCycle) + 1) / 2;
                     Mono_ON = zeros(size(tempFast));
 
                     if stim.temporal.dropFastEye(runNum) > 0
                         k = stim.temporal.dropFastEye(runNum);
                         tempFast( ...
-                            tMain > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tMain < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 0;
+                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
+                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 0;
                         Mono_ON( ...
-                            tMain > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tMain < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
+                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
+                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
                     end
 
                     if stim.temporal.dropSlowEye(runNum) > 0
                         k = stim.temporal.dropSlowEye(runNum);
                         tempSlow( ...
-                            tMain > stim.temporal.DurSlowCycle*(k-1) + 0.75*stim.temporal.DurSlowCycle & ...
-                            tMain < stim.temporal.DurSlowCycle*k     + 0.75*stim.temporal.DurSlowCycle ) = 0;
+                            tDich > stim.temporal.DurSlowCycle*(k-1) + 0.75*stim.temporal.DurSlowCycle & ...
+                            tDich < stim.temporal.DurSlowCycle*k     + 0.75*stim.temporal.DurSlowCycle ) = 0;
                         Mono_ON( ...
-                            tMain > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tMain < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
+                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
+                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
                     end
 
                     switch stim.temporal.fastEye(runNum)
