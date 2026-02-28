@@ -37,9 +37,6 @@ opts.joy.invert    = false;
 opts.joy.smoothing  = 0.15;  % EMA alpha; 0=no smoothing
 opts.contrast.start = 0.5;
 
-% ---------- Performance ----------
-opts.performance.preloadMovie = true;   % decode frames before run to reduce dropped frames
-
 
 %--------------Paths
 
