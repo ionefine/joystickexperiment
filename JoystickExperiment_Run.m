@@ -64,14 +64,6 @@ if opts.isBinocularPlayback
 else
     stim = je.makeJoystickPsychoConditions(stim,  opts.numRuns);
 end
-% ---------- Alignment ----------
-if opts.nonius
-    addpath(paths.noniusDir);
-    [session.offsetLeft, session.offsetRight] = alignment_task( ...
-        'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
-        'useBgPattern', 'y', 'useJoystick', 'n');
-end
-
 % ---------- PTB keyboard stuff -----------------------
 KbName('UnifyKeyNames');
 ESCAPE = KbName('ESCAPE');
@@ -84,6 +76,14 @@ gammaTable = je.loadGammaTable(paths.gammaTableFile);
 audio = je.initFeedbackAudio(stim.tone);
 
 cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio));
+
+% ---------- Alignment ----------
+if opts.nonius
+    [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
+        'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
+        'useBgPattern', 'y', 'useJoystick', 'n', ...
+        'window', ptb.win, 'ifi', display.ifi);
+end
 
 % ------------ Generate stimuli------------------
 stim = je.generateStimulusTimeCourses(stim, display, opts);
