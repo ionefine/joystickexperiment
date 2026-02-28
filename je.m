@@ -18,9 +18,15 @@ classdef je
 
             stim = struct();
             stim.temporal.DurPre = 2; % in secs
+
+            % user-controlled mode is binocular playback only
+            if isfield(opts, 'user_controlled') && opts.user_controlled
+                opts.isBinocularPlayback = true;
+            end
+
             if opts.isBinocularPlayback == true
                 stim.temporal.DurPre = 2; % in secs
-                stim.temporal.nBinoCycles = 2; % in cycles
+                stim.temporal.nBinoCycles = 6; % in cycles
                 stim.temporal.DichDur = 0; % in secs: doesn't include DurPre and the BinocularPeriod
             else
                 stim.temporal.nBinoCycles = 2; % in cycles
@@ -922,7 +928,7 @@ end
 
             % Frame counts
             nFramesPre  = round(stim.temporal.DurPre * display.frameRateHz);
-            nFramesBino = round(stim.temporal.DurBinoCycle* display.frameRateHz);
+            nFramesBino = round(stim.temporal.nBinoCycles * stim.temporal.DurBinoCycle * display.frameRateHz);
             nFramesDich = round(stim.temporal.DichDur * display.frameRateHz);
             tDich = (0:(nFramesDich-1)) / display.frameRateHz;  % time vector for the dichoptic/monocular bit
 

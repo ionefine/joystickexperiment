@@ -2,6 +2,10 @@
 clear
 % ---------- Options ----------
 opts = struct();
+
+% ---------- Control mode ----------
+opts.user_controlled     = true;   % joystick drives contrast live
+opts.computer_controlled = false;  % use stim.data.contrast timecourses
 opts.isBinocularPlayback = true;  % if true does a prolonged set of binocular cycles
 opts.enableFeedback      = true;
 opts.feedbackDelaySec    = 0.5;
@@ -13,9 +17,10 @@ opts.feedbackDelay = .5; % assumed lag if providing feedback
 opts.numRuns             = 10;     % cap number of runs
 opts.assertTol           = 1e-10;  % float tolerance for sanity check
 
-% ---------- Control mode ----------
-opts.user_controlled     = true;   % joystick drives contrast live
-opts.computer_controlled = false;  % use stim.data.contrast timecourses
+% user-controlled mode is binocular playback only
+if opts.user_controlled
+    opts.isBinocularPlayback = true;
+end
 
 if opts.user_controlled == opts.computer_controlled
     error('Set exactly one of opts.user_controlled or opts.computer_controlled to true.');
