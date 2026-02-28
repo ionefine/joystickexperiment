@@ -696,7 +696,7 @@ classdef je
             %   state.buttons       intentionally empty (buttons are read from keyboard)
 
             if strcmp(ptb.input.mode, 'winjoystickmex')
-                [x, y, z, ~] = WinJoystickMex(ptb.input.joyId);
+                [x, y, z, buttons] = WinJoystickMex(ptb.input.joyId);
 
                 % WinJoystickMex typically returns axes already roughly in [-1..+1],
                 % but different drivers/devices can vary. This keeps it robust.
