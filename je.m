@@ -50,7 +50,7 @@ classdef je
             display.distanceCm   = 136;
             display.screenIndex  = 0;
             display.stereoMode   = 4;
-            display.updateFrames = 1; % controls how often the display is updated
+            display.updateFrames = 2; % controls how often the display is updated
 
         end
 
