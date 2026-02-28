@@ -21,10 +21,10 @@ classdef je
             if opts.isBinocularPlayback == true
                 stim.temporal.DurPre = 2; % in secs
                 stim.temporal.nBinoCycles = 2; % in cycles
-                stim.temporal.MainDur = 0; % in secs: doesn't include DurPre and the BinocularPeriod
+                stim.temporal.DichDur = 0; % in secs: doesn't include DurPre and the BinocularPeriod
             else
                 stim.temporal.nBinoCycles = 2; % in cycles
-                stim.temporal.MainDur = 48; % in secs: doesn't include DurPre and the BinocularPeriod
+                stim.temporal.DichDur = 48; % in secs: doesn't include DurPre and the BinocularPeriod
             end
             stim.temporal.HzSlowCycle = 1/8;
             stim.temporal.HzFastCycle = 1/6;
@@ -192,8 +192,8 @@ classdef je
             PsychImaging('PrepareConfiguration');
 
             % Screen selection
-            if isstruct(display) && isfield(display,'screenNumber') && ~isempty(display.screenNumber)
-                screenNumber = display.screenNumber;
+            if isstruct(display) && isfield(display,'screenIndex') && ~isempty(display.screenIndex)
+                screenNumber = display.screenIndex;
             else
                 screenNumber = max(Screen('Screens'));
             end
@@ -320,9 +320,9 @@ classdef je
 
         % ===================== UI =====================
         function showInterRunScreen(ptb, session, runsComplete, totalRuns, stim, display, opts)
-            if isfield(opts,'user_controlled') && opts.user_controlled
-                line1 = 'YOU control the contrast with the Thrustmaster Pro slider.';
-                line2 = 'Move the slider to adjust contrast. Use keyboard for buttons.';
+            if opts.user_controlled
+                line1 = 'YOU control the contrast with the joystick.';
+                line2 = 'Move the control to adjust contrast.';
             else
                 line1 = 'The COMPUTER is controlling the contrast.';
                 line2 = 'Use the Thrustmaster Pro slider to REPORT what you see.';
@@ -450,7 +450,8 @@ classdef je
                 % Convert [-1..+1] -> [0..1]
                 state.slider01 = (je.clampToUnit(z) + 1) / 2;
 
-                state.buttons = []; % buttons are handled via keyboard
+                state.joystickButtons = buttons; % bitmask from joystick
+                state.buttons = je.readKeyboardButtons();
 
             else
                 j = ptb.joystickIndex;
@@ -462,8 +463,22 @@ classdef je
                 slider = Gamepad('GetAxis', j, ax.slider);
                 state.slider01 = (je.clampToUnit(slider) + 1) / 2;
 
-                state.buttons = []; % buttons are handled via keyboard
+                state.joystickButtons = [];
+                state.buttons = je.readKeyboardButtons();
             end
+        end
+
+
+        function buttons = readKeyboardButtons()
+            [keyIsDown, ~, keyCode] = KbCheck;
+            buttons = struct();
+            buttons.any = keyIsDown;
+            buttons.escape = keyCode(KbName('ESCAPE'));
+            buttons.space = keyCode(KbName('space'));
+            buttons.left = keyCode(KbName('LeftArrow'));
+            buttons.right = keyCode(KbName('RightArrow'));
+            buttons.up = keyCode(KbName('UpArrow'));
+            buttons.down = keyCode(KbName('DownArrow'));
         end
 
         function v = clampToUnit(v)
@@ -542,7 +557,7 @@ classdef je
         Screen('Close', texR);
 
         if opts.enableFeedback
-            je.maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, i);
+            audio = je.maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, i);
         end
 
         ptb.flipTimestamp = Screen('Flip', ptb.win, ptb.flipTimestamp + ((display.waitFrames-0.5)*display.ifi));
@@ -554,7 +569,7 @@ classdef je
     timing.expectedSec = max(stim.data.t);
 end
 
-        function maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, frameIndex)
+        function audio = maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, frameIndex)
 
             delayFrames = round(opts.feedbackDelay/display.ifi);
             if frameIndex <= delayFrames
@@ -590,7 +605,7 @@ end
             %
             % Inputs
             %   hz.Slow, hz.Fast : temporal frequencies (Hz)
-            %   stim.duration    : duration of main segment (seconds)
+            %   stim.duration    : duration of dichoptic segment (seconds)
             %
             % Output
             %   config : struct describing each run:
@@ -603,8 +618,8 @@ end
             % Random permutations of cycle indices, i.e. which cycle will
             % contain the dropout
 
-            nSlowCycles = stim.temporal.MainDur/stim.temporal.DurSlowCycle;
-            nFastCycles = stim.temporal.MainDur/stim.temporal.DurFastCycle;
+            nSlowCycles = stim.temporal.DichDur/stim.temporal.DurSlowCycle;
+            nFastCycles = stim.temporal.DichDur/stim.temporal.DurFastCycle;
 
             whichSlowPerm = randperm(nSlowCycles)';
             whichFastPerm = randperm(nFastCycles)';
@@ -651,10 +666,10 @@ end
             % Frame counts
             nFramesPre  = round(stim.temporal.DurPre * display.frameRateHz);
             nFramesBino = round(stim.temporal.DurBinoCycle* display.frameRateHz);
-            nFramesMain = round(stim.temporal.MainDur * display.frameRateHz);
-            tMain = (0:(nFramesMain-1)) / display.frameRateHz;  % time vector for the dichoptic/monocular bit
+            nFramesDich = round(stim.temporal.MainDur * display.frameRateHz);
+            tDich = (0:(nFramesDich-1)) / display.frameRateHz;  % time vector for the dichoptic/monocular bit
 
-            nFramesTotal = nFramesPre + nFramesBino + nFramesMain;
+            nFramesTotal = nFramesPre + nFramesBino + nFramesDich;
             tTotal =  (0:(nFramesTotal-1)) / display.frameRateHz;   % time vector including pre and bino
             stim.data.contrast = zeros(nruns, nFramesTotal, 2);
             stim.data.t = tTotal;
@@ -664,7 +679,7 @@ end
 
             % build binocular frames
             tBino = (0:(nFramesBino-1)) / display.frameRateHz;
-            FramesBino = (sin(2*pi*tBino / stim.temporal.HzBinoCycle) + 1) / 2;
+            FramesBino = (sin(2*pi*stim.temporal.HzBinoCycle*tBino) + 1) / 2;
 
             % initialize masks, set them for pre and bino period
             stim.data.Pre_ON = false(nruns, nFramesTotal);
@@ -683,28 +698,28 @@ end
             if ~opts.isBinocularPlayback
                 for runNum = 1:nruns
 
-                    tempFast = (sin(2*pi*tMain / stim.temporal.HzFastCycle) + 1) / 2;
-                    tempSlow = (sin(2*pi*tMain / stim.temporal.HzSlowCycle) + 1) / 2;
+                    tempFast = (sin(2*pi*tDich / stim.temporal.HzFastCycle) + 1) / 2;
+                    tempSlow = (sin(2*pi*tDich / stim.temporal.HzSlowCycle) + 1) / 2;
                     Mono_ON = zeros(size(tempFast));
 
                     if stim.temporal.dropFastEye(runNum) > 0
                         k = stim.temporal.dropFastEye(runNum);
                         tempFast( ...
-                            tMain > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tMain < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 0;
+                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
+                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 0;
                         Mono_ON( ...
-                            tMain > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tMain < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
+                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
+                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
                     end
 
                     if stim.temporal.dropSlowEye(runNum) > 0
                         k = stim.temporal.dropSlowEye(runNum);
                         tempSlow( ...
-                            tMain > stim.temporal.DurSlowCycle*(k-1) + 0.75*stim.temporal.DurSlowCycle & ...
-                            tMain < stim.temporal.DurSlowCycle*k     + 0.75*stim.temporal.DurSlowCycle ) = 0;
+                            tDich > stim.temporal.DurSlowCycle*(k-1) + 0.75*stim.temporal.DurSlowCycle & ...
+                            tDich < stim.temporal.DurSlowCycle*k     + 0.75*stim.temporal.DurSlowCycle ) = 0;
                         Mono_ON( ...
-                            tMain > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tMain < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
+                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
+                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
                     end
 
                     switch stim.temporal.fastEye(runNum)
@@ -720,10 +735,10 @@ end
                     stim.data.contrast(runNum,:,2) = [FramesPre, FramesBino, RE];
                     stim.data.Mono_ON(runNum, :) =  [0.*FramesPre, 0.*FramesBino, Mono_ON];
                 end
-                stim.data.Dich_on = ~stim.data.Pre_ON & ~stim.data.Bino_ON & ~stim.data.Mono_ON;
+                stim.data.Dich_ON = ~stim.data.Pre_ON & ~stim.data.Bino_ON & ~stim.data.Mono_ON;
             else % just binocular
-                stim.data.contrast(1:runNum,:,1) = [FramesPre, FramesBino];
-                stim.data.contrast(1:runNum,:,2) = [FramesPre, FramesBino];
+                stim.data.contrast(1:nruns,:,1) = repmat([FramesPre, FramesBino], nruns, 1);
+                stim.data.contrast(1:nruns,:,2) = repmat([FramesPre, FramesBino], nruns, 1);
                 stim.data.Mono_ON = false(nruns, nFramesTotal);
                 stim.data.Dich_ON = false(nruns, nFramesTotal);
             end
