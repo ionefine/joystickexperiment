@@ -24,11 +24,13 @@ end
 % ---------- Contrast mapping ----------
 opts.contrast.min   = 0.0;
 opts.contrast.max   = 1.0;
+opts.contrast.start = 0.5;
 
 % Which joystick control drives contrast:
 % 'slider' uses state.slider01 (already normalized 0..1)
 % 'x' or 'y' uses state.x/state.y (-1..1) mapped to 0..1
 opts.joy.control = 'slider';
+opts.joy.deadzone = 0.0;
 
 % Optional shaping
 opts.joy.smoothing  = 0.15;  % EMA alpha; 0=no smoothing
@@ -48,10 +50,9 @@ session = je.promptSessionInfo(paths.homeDir);
 session.saveDir = je.ensureOutputDir(session.subjectId, paths.homeDir);
 
 % ---------- design  timecourses ----------
-seed = RandStream('mt19937ar','Seed','shuffle');
 if opts.isBinocularPlayback
-    stim.data.runSaved = false(1:opts.numRuns);
-    stim.data.created  = datestr(now)
+    stim.data.runSaved = false(1, opts.numRuns);
+    stim.data.created  = datestr(now);
 else
     stim = je.makeJoystickPsychoConditions(stim,  opts.numRuns);
 end
