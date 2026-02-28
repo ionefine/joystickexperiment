@@ -50,7 +50,7 @@ classdef je
             display.distanceCm   = 136;
             display.screenIndex  = 0;
             display.stereoMode   = 4;
-            display.waitFrames   = 1;
+            display.updateFrames = 1; % controls how often the display is updated
 
         end
 
@@ -612,7 +612,7 @@ classdef je
             je.drawFixFrame(ptb, stim, session.offsetLeft, 0);
             je.drawFixFrame(ptb, stim, session.offsetRight, 1);
 
-            ptb.flipTimestamp = Screen('Flip', ptb.win, ptb.flipTimestamp + ((display.waitFrames-0.5)*display.ifi));
+            ptb.flipTimestamp = Screen('Flip', ptb.win, ptb.flipTimestamp + ((display.updateFrames-0.5)*display.ifi));
         end
 
         function drawFixFrame(ptb, stim, offset, stereoBuffer)
@@ -817,7 +817,7 @@ classdef je
             audio = je.maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, i);
         end
 
-        ptb.flipTimestamp = Screen('Flip', ptb.win, ptb.flipTimestamp + ((display.waitFrames-0.5)*display.ifi));
+        ptb.flipTimestamp = Screen('Flip', ptb.win, ptb.flipTimestamp + ((display.updateFrames-0.5)*display.ifi));
         je.abortIfEscape();
     end
 
