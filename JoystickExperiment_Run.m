@@ -10,7 +10,7 @@ opts.isBinocularPlayback = true;  % if true does a prolonged set of binocular cy
 opts.enableFeedback      = true;
 opts.feedbackDelaySec    = 0.5;
 opts.feedbackErrorThresh = 0.2;
-opts.nonius = false;
+opts.nonius = true ;
 opts.feedbackDelay = .5; % assumed lag if providing feedback
 
 
@@ -68,23 +68,34 @@ end
 KbName('UnifyKeyNames');
 ESCAPE = KbName('ESCAPE');
 KbReleaseWait;
+
 % ---------- Gamma ----------
 gammaTable = je.loadGammaTable(paths.gammaTableFile);
+
 
 % ---------- PTB init ----------
 [display, ptb] = je.initPtb(display, stim.fix.textSizePt, gammaTable);
 audio = je.initFeedbackAudio(stim.tone);
-
 cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio));
 
 % ---------- Alignment ----------
 if opts.nonius
+<<<<<<< Updated upstream
     [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
         'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
         'useBgPattern', 'y', 'useJoystick', 'n', ...
         'window', ptb.win, 'ifi', display.ifi);
 end
 
+=======
+    addpath(paths.noniusDir);
+    [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
+        'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
+        'useBgPattern', 'y', 'useJoystick', 'n');
+end
+
+
+>>>>>>> Stashed changes
 % ------------ Generate stimuli------------------
 stim = je.generateStimulusTimeCourses(stim, display, opts);
 
