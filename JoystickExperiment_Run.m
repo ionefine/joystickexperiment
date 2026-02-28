@@ -30,10 +30,12 @@ opts.contrast.start = 0.5;
 % 'slider' uses state.slider01 (already normalized 0..1)
 % 'x' or 'y' uses state.x/state.y (-1..1) mapped to 0..1
 opts.joy.control = 'slider';
-opts.joy.deadzone = 0.0;
+opts.joy.deadzone  = 0.00;
+opts.joy.invert    = false;
 
 % Optional shaping
 opts.joy.smoothing  = 0.15;  % EMA alpha; 0=no smoothing
+opts.contrast.start = 0.5;
 
 
 %--------------Paths

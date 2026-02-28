@@ -262,13 +262,13 @@ classdef je
             idx = [];
             for i = 1:numel(gamepadNames)
                 nm = lower(gamepadNames{i});
-                if contains(nm, 'thrustmaster') && contains(nm, 'twcs')
+                if contains(nm, 'thrustmaster') && (contains(nm, 'pro') || contains(nm, 't.16000m') || contains(nm, '16000'))
                     idx = i;
                     break;
                 end
             end
             if isempty(idx)
-                idx = 1; % fallback
+                error('Thrustmaster Pro joystick not found. Detected devices: %s', strjoin(gamepadNames, ', '));
             end
         end
 
@@ -325,7 +325,7 @@ classdef je
                 line2 = 'Move the control to adjust contrast.';
             else
                 line1 = 'The COMPUTER is controlling the contrast.';
-                line2 = 'Use the slider to REPORT what you see.';
+                line2 = 'Use the Thrustmaster Pro slider to REPORT what you see.';
             end
 
             msg = {
@@ -436,10 +436,10 @@ classdef je
             % Returns:
             %   state.x, state.y    in [-1, +1] (approx)
             %   state.slider01      in [0, 1] (approx; normalized)
-            %   state.buttons       raw buttons (bitmask on Windows; vector on others)
+            %   state.buttons       intentionally empty (buttons are read from keyboard)
 
             if strcmp(ptb.input.mode, 'winjoystickmex')
-                [x, y, z, buttons] = WinJoystickMex(ptb.input.joyId);
+                [x, y, z, ~] = WinJoystickMex(ptb.input.joyId);
 
                 % WinJoystickMex typically returns axes already roughly in [-1..+1],
                 % but different drivers/devices can vary. This keeps it robust.
