@@ -329,6 +329,7 @@ classdef je
         % ===================== Alignment task =====================
         function [offsetL, offsetR] = alignmentTask(whichStimuli, sID, varargin)
             opts = je.parseAlignmentOptions(varargin{:});
+            usingExternalWindow = ~isempty(opts.window) && opts.window > 0;
 
             screenRes = Screen('Rect', 0);
             screenRes(3) = screenRes(3)/2;
@@ -390,8 +391,17 @@ classdef je
             offsetL = [0 0];
             offsetR = [0 0];
 
-            [window, ~] = Screen('OpenWindow', 0, grey, [], [], [], stereoMode);
-            ifi = Screen('GetFlipInterval', window);
+            if usingExternalWindow
+                window = opts.window;
+                if isempty(opts.ifi)
+                    ifi = Screen('GetFlipInterval', window);
+                else
+                    ifi = opts.ifi;
+                end
+            else
+                [window, ~] = Screen('OpenWindow', 0, grey, [], [], [], stereoMode);
+                ifi = Screen('GetFlipInterval', window);
+            end
             waitframes = 1;
 
             nPatternDots = 800;
@@ -410,7 +420,7 @@ classdef je
             ListenChar(2);
             endTask = false;
 
-            cleanupObj = onCleanup(@() je.cleanupAlignmentTask(window)); %#ok<NASGU>
+            cleanupObj = onCleanup(@() je.cleanupAlignmentTask(window, usingExternalWindow)); %#ok<NASGU>
 
             while ~endTask
                 Screen('SelectStereoDrawBuffer', window, 0);
@@ -484,7 +494,8 @@ classdef je
         end
 
         function opts = parseAlignmentOptions(varargin)
-            opts = struct('eyeAdjust', [], 'useBgPattern', [], 'addFlicker', 'n', 'useJoystick', 'n');
+            opts = struct('eyeAdjust', [], 'useBgPattern', [], 'addFlicker', 'n', 'useJoystick', 'n', ...
+                'window', [], 'ifi', []);
             i = 1;
             while i <= numel(varargin)
                 key = string(varargin{i});
@@ -501,6 +512,10 @@ classdef je
                         opts.addFlicker = value;
                     case "usejoystick"
                         opts.useJoystick = value;
+                    case "window"
+                        opts.window = value;
+                    case "ifi"
+                        opts.ifi = value;
                 end
                 i = i + 2;
             end
@@ -568,7 +583,15 @@ classdef je
             end
         end
 
-        function cleanupAlignmentTask(window)
+        function cleanupAlignmentTask(window, keepWindowOpen)
+            if nargin < 2
+                keepWindowOpen = false;
+            end
+            if keepWindowOpen
+                ListenChar(0);
+                return;
+            end
+
             try
                 if exist('window', 'var') && ~isempty(window)
                     Screen('Close', window);
