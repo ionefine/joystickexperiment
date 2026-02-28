@@ -21,10 +21,10 @@ classdef je
             if opts.isBinocularPlayback == true
                 stim.temporal.DurPre = 2; % in secs
                 stim.temporal.nBinoCycles = 2; % in cycles
-                stim.temporal.MainDur = 0; % in secs: doesn't include DurPre and the BinocularPeriod
+                stim.temporal.DichDur = 0; % in secs: doesn't include DurPre and the BinocularPeriod
             else
                 stim.temporal.nBinoCycles = 2; % in cycles
-                stim.temporal.MainDur = 48; % in secs: doesn't include DurPre and the BinocularPeriod
+                stim.temporal.DichDur = 48; % in secs: doesn't include DurPre and the BinocularPeriod
             end
             stim.temporal.HzSlowCycle = 1/8;
             stim.temporal.HzFastCycle = 1/6;
@@ -603,8 +603,8 @@ end
             % Random permutations of cycle indices, i.e. which cycle will
             % contain the dropout
 
-            nSlowCycles = stim.temporal.MainDur/stim.temporal.DurSlowCycle;
-            nFastCycles = stim.temporal.MainDur/stim.temporal.DurFastCycle;
+            nSlowCycles = stim.temporal.DichDur/stim.temporal.DurSlowCycle;
+            nFastCycles = stim.temporal.DichDur/stim.temporal.DurFastCycle;
 
             whichSlowPerm = randperm(nSlowCycles)';
             whichFastPerm = randperm(nFastCycles)';
@@ -651,7 +651,7 @@ end
             % Frame counts
             nFramesPre  = round(stim.temporal.DurPre * display.frameRateHz);
             nFramesBino = round(stim.temporal.DurBinoCycle* display.frameRateHz);
-            nFramesMain = round(stim.temporal.MainDur * display.frameRateHz);
+            nFramesMain = round(stim.temporal.DichDur * display.frameRateHz);
             tMain = (0:(nFramesMain-1)) / display.frameRateHz;  % time vector for the dichoptic/monocular bit
 
             nFramesTotal = nFramesPre + nFramesBino + nFramesMain;
