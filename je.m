@@ -26,8 +26,8 @@ classdef je
 
             if opts.isBinocularPlayback == true
                 stim.temporal.DurPre = 2; % in secs
-                stim.temporal.nBinoCycles = 6; % in cycles
-                stim.temporal.DichDur = 0; % in secs: doesn't include DurPre and the BinocularPeriod
+                stim.temporal.nBinoCycles = 2; % in cycles
+                stim.temporal.DichDur = 48; % in secs: binocular replay equivalent of dichoptic period
             else
                 stim.temporal.nBinoCycles = 2; % in cycles
                 stim.temporal.DichDur = 48; % in secs: doesn't include DurPre and the BinocularPeriod
@@ -904,27 +904,39 @@ end
 
             delayFrames = 0;
 
-            responseLagSec = 0.25;
-            if isfield(opts, 'responseLagSec') && ~isempty(opts.responseLagSec)
-                responseLagSec = opts.responseLagSec;
+            responseLagWindowSec = [0.1 0.4];
+            if isfield(opts, 'responseLagWindowSec') && numel(opts.responseLagWindowSec) == 2
+                responseLagWindowSec = sort(opts.responseLagWindowSec(:))';
             end
-            responseLagFrames = round(responseLagSec/display.ifi);
 
-            if frameIndex <= (delayFrames + responseLagFrames)
+            minLagFrames = max(1, round(responseLagWindowSec(1)/display.ifi));
+            maxLagFrames = max(minLagFrames, round(responseLagWindowSec(2)/display.ifi));
+
+            if frameIndex <= (delayFrames + minLagFrames)
                 return;
             end
 
             evalIndex = frameIndex - delayFrames;
-            targetIndex = evalIndex - responseLagFrames;
-
-            % Congruent-only gate (both samples should come from binocular period)
-            if ~stim.data.Bino_ON(runIndex, evalIndex) || ~stim.data.Bino_ON(runIndex, targetIndex)
+            targetIndices = evalIndex - (minLagFrames:maxLagFrames);
+            targetIndices = targetIndices(targetIndices >= 1);
+            if isempty(targetIndices)
                 return;
             end
 
-            target = stim.data.contrast(runIndex, targetIndex, 1);
+            % Congruent-only gate (evaluation and all candidate lag samples
+            % should come from binocular periods).
+            if ~stim.data.Bino_ON(runIndex, evalIndex)
+                return;
+            end
+            binoMask = stim.data.Bino_ON(runIndex, targetIndices);
+            targetIndices = targetIndices(binoMask);
+            if isempty(targetIndices)
+                return;
+            end
+
             participant = response(evalIndex);
-            err = abs(participant - target);
+            targets = squeeze(stim.data.contrast(runIndex, targetIndices, 1));
+            err = min(abs(participant - targets(:)'));
             if err <= opts.feedbackErrorThresh
                 return;
             end
@@ -1076,10 +1088,23 @@ end
                     stim.data.Mono_ON(runNum, :) =  [0.*FramesPre, 0.*FramesBino, Mono_ON, 0.*FramesPost];
                 end
                 stim.data.Dich_ON = ~stim.data.Pre_ON & ~stim.data.Bino_ON & ~stim.data.Mono_ON & ~stim.data.Post_ON;
-            else % just binocular
-                stim.data.contrast(1:nruns,:,1) = repmat([FramesPre, FramesBino, FramesPost], nruns, 1);
-                stim.data.contrast(1:nruns,:,2) = repmat([FramesPre, FramesBino, FramesPost], nruns, 1);
+            else % binocular playback with dichoptic-equivalent segment
+                tempFast = (sin(2*pi*stim.temporal.HzFastCycle*tDich - pi/2) + 1) / 2;
+                tempSlow = (sin(2*pi*stim.temporal.HzSlowCycle*tDich - pi/2) + 1) / 2;
+                if nFramesDich > 0
+                    tempFast(end) = 0;
+                    tempSlow(end) = 0;
+                end
+
+                binocularDichEquivalent = (3*max(tempFast, tempSlow) + min(tempFast, tempSlow)) / 4;
+                playbackContrast = [FramesPre, FramesBino, binocularDichEquivalent, FramesPost];
+
+                stim.data.contrast(1:nruns,:,1) = repmat(playbackContrast, nruns, 1);
+                stim.data.contrast(1:nruns,:,2) = repmat(playbackContrast, nruns, 1);
                 stim.data.Mono_ON = false(nruns, nFramesTotal);
+                if nFramesDich > 0
+                    stim.data.Bino_ON(:, nFramesPre + nFramesBino + (1:nFramesDich)) = true;
+                end
                 stim.data.Dich_ON = false(nruns, nFramesTotal);
             end
         end % end of runs

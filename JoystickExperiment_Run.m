@@ -10,7 +10,7 @@ opts.isBinocularPlayback = false;  % if true does a prolonged set of binocular c
 opts.enableFeedback      = true;
 opts.feedbackErrorThresh = 0.2;
 opts.nonius = true ;
-opts.responseLagSec      = 0.25; % assumed participant motor/response lag relative to stimulus
+opts.responseLagWindowSec = [0.1 0.4]; % acceptable participant motor/response lag window (s)
 
 opts.numRuns             = 10;     % cap number of runs
 opts.assertTol           = 1e-10;  % float tolerance for sanity check
