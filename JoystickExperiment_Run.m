@@ -128,8 +128,8 @@ while ~stopAll
 
     stim.data.runSaved(runIndex) = true;
 
-    % Progressive save (legacy filename pattern)
-    save(fullfile(session.saveDir, [session.subjectId '_congruent_psychophysics_bandpass']), "stim");
+    % Progressive save
+    save(fullfile(session.saveDir, session.outputFileBase), "stim");
     je.abortIfEscape();
     if runIndex >= numel(stim.data.runSaved)
         stopAll = true;
@@ -150,4 +150,4 @@ if opts.isBinocularPlayback
     end
 end
 
-save(fullfile(session.saveDir, [session.subjectId '_congruent_psychophysics_bandpass']), "stim", "display", "opts", "session", "ptb", "audio", "gammaTable");
+save(fullfile(session.saveDir, session.outputFileBase), "stim", "display", "opts", "session", "ptb", "audio", "gammaTable");
