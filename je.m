@@ -492,6 +492,7 @@ classdef je
                 runnum = runnum + 1;
             end
             save(fullfile(outputDir, sprintf('%s-%d-coords.mat', sID, runnum)), 'offsetL', 'offsetR', 'sID', 'runtime', 'whichStimuli');
+            KbReleaseWait;
         end
 
         function opts = parseAlignmentOptions(varargin)
