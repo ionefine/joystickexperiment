@@ -1090,6 +1090,9 @@ end
                 stim.data.contrast(1:nruns,:,1) = repmat(playbackContrast, nruns, 1);
                 stim.data.contrast(1:nruns,:,2) = repmat(playbackContrast, nruns, 1);
                 stim.data.Mono_ON = false(nruns, nFramesTotal);
+                if nFramesDich > 0
+                    stim.data.Bino_ON(:, nFramesPre + nFramesBino + (1:nFramesDich)) = true;
+                end
                 stim.data.Dich_ON = false(nruns, nFramesTotal);
                 if nFramesDich > 0
                     stim.data.Dich_ON(:, nFramesPre + nFramesBino + (1:nFramesDich)) = true;
