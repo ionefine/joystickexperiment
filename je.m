@@ -904,27 +904,39 @@ end
 
             delayFrames = 0;
 
-            responseLagSec = 0.25;
-            if isfield(opts, 'responseLagSec') && ~isempty(opts.responseLagSec)
-                responseLagSec = opts.responseLagSec;
+            responseLagWindowSec = [0.1 0.4];
+            if isfield(opts, 'responseLagWindowSec') && numel(opts.responseLagWindowSec) == 2
+                responseLagWindowSec = sort(opts.responseLagWindowSec(:))';
             end
-            responseLagFrames = round(responseLagSec/display.ifi);
 
-            if frameIndex <= (delayFrames + responseLagFrames)
+            minLagFrames = max(1, round(responseLagWindowSec(1)/display.ifi));
+            maxLagFrames = max(minLagFrames, round(responseLagWindowSec(2)/display.ifi));
+
+            if frameIndex <= (delayFrames + minLagFrames)
                 return;
             end
 
             evalIndex = frameIndex - delayFrames;
-            targetIndex = evalIndex - responseLagFrames;
-
-            % Congruent-only gate (both samples should come from binocular period)
-            if ~stim.data.Bino_ON(runIndex, evalIndex) || ~stim.data.Bino_ON(runIndex, targetIndex)
+            targetIndices = evalIndex - (minLagFrames:maxLagFrames);
+            targetIndices = targetIndices(targetIndices >= 1);
+            if isempty(targetIndices)
                 return;
             end
 
-            target = stim.data.contrast(runIndex, targetIndex, 1);
+            % Congruent-only gate (evaluation and all candidate lag samples
+            % should come from binocular periods).
+            if ~stim.data.Bino_ON(runIndex, evalIndex)
+                return;
+            end
+            binoMask = stim.data.Bino_ON(runIndex, targetIndices);
+            targetIndices = targetIndices(binoMask);
+            if isempty(targetIndices)
+                return;
+            end
+
             participant = response(evalIndex);
-            err = abs(participant - target);
+            targets = squeeze(stim.data.contrast(runIndex, targetIndices, 1));
+            err = min(abs(participant - targets(:)'));
             if err <= opts.feedbackErrorThresh
                 return;
             end
@@ -934,6 +946,61 @@ end
             if nowSec - audio.lastBeepTimeSec > minGap
                 PsychPortAudio('Start', audio.handle);
                 audio.lastBeepTimeSec = nowSec;
+            end
+        end
+
+
+        function lagSec = estimateParticipantLagSec(stim, response, display, opts, runIndex)
+            % Estimate participant lag (sec) by finding lag with lowest
+            % mean absolute error in the acceptable response lag window.
+
+            lagWindowSec = [0.1 0.4];
+            if isfield(opts, 'responseLagWindowSec') && numel(opts.responseLagWindowSec) == 2
+                lagWindowSec = sort(opts.responseLagWindowSec(:))';
+            end
+
+            sampleSec = display.ifi * max(1, round(display.updateFrames));
+            minLagFrames = max(1, round(lagWindowSec(1)/sampleSec));
+            maxLagFrames = max(minLagFrames, round(lagWindowSec(2)/sampleSec));
+
+            nFrames = size(stim.data.contrast, 2);
+            evalIndices = find(stim.data.Bino_ON(runIndex, :));
+
+            bestErr = inf;
+            bestLagFrames = NaN;
+
+            for lagFrames = minLagFrames:maxLagFrames
+                targetIndices = evalIndices - lagFrames;
+                validMask = targetIndices >= 1 & targetIndices <= nFrames;
+                evalValid = evalIndices(validMask);
+                targetValid = targetIndices(validMask);
+
+                if isempty(evalValid)
+                    continue;
+                end
+
+                bothBinoMask = stim.data.Bino_ON(runIndex, evalValid) & stim.data.Bino_ON(runIndex, targetValid);
+                evalValid = evalValid(bothBinoMask);
+                targetValid = targetValid(bothBinoMask);
+
+                if isempty(evalValid)
+                    continue;
+                end
+
+                participant = response(evalValid);
+                target = squeeze(stim.data.contrast(runIndex, targetValid, 1))';
+                err = mean(abs(participant - target));
+
+                if err < bestErr
+                    bestErr = err;
+                    bestLagFrames = lagFrames;
+                end
+            end
+
+            if isnan(bestLagFrames)
+                lagSec = NaN;
+            else
+                lagSec = bestLagFrames * sampleSec;
             end
         end
 

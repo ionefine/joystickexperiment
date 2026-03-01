@@ -10,7 +10,7 @@ opts.isBinocularPlayback = false;  % if true does a prolonged set of binocular c
 opts.enableFeedback      = true;
 opts.feedbackErrorThresh = 0.2;
 opts.nonius = true ;
-opts.responseLagSec      = 0.25; % assumed participant motor/response lag relative to stimulus
+opts.responseLagWindowSec = [0.1 0.4]; % acceptable participant motor/response lag window (s)
 
 opts.numRuns             = 10;     % cap number of runs
 opts.assertTol           = 1e-10;  % float tolerance for sanity check
@@ -133,6 +133,20 @@ while ~stopAll
     je.abortIfEscape();
     if runIndex >= numel(stim.data.runSaved)
         stopAll = true;
+    end
+end
+
+if opts.isBinocularPlayback
+    fprintf('\nEstimated participant lag per run (binocular playback):\n');
+    savedRuns = find(stim.data.runSaved);
+    for k = 1:numel(savedRuns)
+        runIdx = savedRuns(k);
+        lagSec = je.estimateParticipantLagSec(stim, stim.data.response(runIdx,:), display, opts, runIdx);
+        if isnan(lagSec)
+            fprintf('  Run %d: could not estimate lag (insufficient valid samples).\n', runIdx);
+        else
+            fprintf('  Run %d: %0.3f s\n', runIdx, lagSec);
+        end
     end
 end
 
