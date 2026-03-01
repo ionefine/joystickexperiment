@@ -989,6 +989,7 @@ end
 
                 participant = response(evalValid);
                 target = squeeze(stim.data.contrast(runIndex, targetValid, 1))';
+                target = reshape(target, size(participant));
                 err = mean(abs(participant - target));
 
                 if err < bestErr
