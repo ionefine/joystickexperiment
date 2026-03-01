@@ -60,6 +60,80 @@ classdef dc
                 cost = cost + tmpCost;
             end
         end
+
+        function files = find_stim_output_files(rootDir, pattern)
+            % Recursively find stimulus output MAT files under rootDir.
+            %
+            % Example:
+            %   files = dc.find_stim_output_files('output', '*_congruent_psychophysics_bandpass.mat')
+            if nargin < 2 || isempty(pattern)
+                pattern = '*_congruent_psychophysics_bandpass.mat';
+            end
+            if nargin < 1 || isempty(rootDir)
+                rootDir = 'output';
+            end
+            files = dir(fullfile(rootDir, '**', pattern));
+        end
+
+        function [d, subjectId] = stim_to_dc_data(stim, subjectId)
+            % Convert saved stimulus output into the dc analysis format.
+            %
+            % Stimulus fields follow JoystickExperiment_Run / je.m naming:
+            %   stim.data.contrast(run,time,eye)
+            %   stim.data.response(run,time)
+            %   stim.data.Bino_ON(run,time)
+            %   stim.data.Mono_ON(run,time)
+            %   stim.temporal.fastEye(run) [0=left fast, 1=right fast]
+
+            if ~isfield(stim, 'data') || ~isfield(stim.data, 'contrast') || ~isfield(stim.data, 'response')
+                error('Stim file missing required fields stim.data.contrast and/or stim.data.response.');
+            end
+
+            if nargin < 2 || isempty(subjectId)
+                subjectId = 'unknown';
+            end
+
+            d = struct();
+            d.datatype = 'psychophysics_bandpass';
+            d.subjectId = subjectId;
+
+            d.contrast = stim.data.contrast;
+            d.response = stim.data.response;
+
+            if isfield(stim.data, 't')
+                d.t = stim.data.t;
+                if numel(d.t) > 1
+                    d.dt = d.t(2) - d.t(1);
+                else
+                    d.dt = 1;
+                end
+            else
+                d.t = 1:size(d.response, 2);
+                d.dt = 1;
+            end
+
+            if isfield(stim.data, 'Bino_ON')
+                d.bino_on = double(stim.data.Bino_ON);
+            else
+                d.bino_on = zeros(size(d.response));
+            end
+
+            if isfield(stim.data, 'Mono_ON')
+                d.mono_on = double(stim.data.Mono_ON);
+            else
+                d.mono_on = zeros(size(d.response));
+            end
+
+            if isfield(stim, 'temporal') && isfield(stim.temporal, 'fastEye')
+                d.fastEye = stim.temporal.fastEye(:);
+            else
+                d.fastEye = zeros(size(d.response, 1), 1);
+            end
+
+            % New stimulus code always records joystick responses.
+            d.joyused = true(size(d.response, 1), 1);
+            d.goodruns = zeros(size(d.response, 1), 1);
+        end
         function p = calc_response_slope(d, p)
             if size(d.prediction)~=size(d.response)
                 error('must use meaned binocular data, contrast and response should be same sized vectors')
@@ -210,7 +284,12 @@ classdef dc
                 hdr(:, e) = y;
             end
 
-            cutoff = max(find(abs(diff(max(hdr,[], 2)))>.001));
+            cutoffCandidates = find(abs(diff(max(hdr,[], 2))) > .001);
+            if isempty(cutoffCandidates)
+                cutoff = size(hdr, 1);
+            else
+                cutoff = max(cutoffCandidates);
+            end
             d.hdr=hdr(1:cutoff, :);
             peak = find(max(hdr,[], 2)==max(hdr(:)));
             d.hdrpeak = d.t(peak(1)); % the peak of the hdr, used to shift timecourses for visualization
