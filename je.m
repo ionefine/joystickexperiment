@@ -665,6 +665,8 @@ classdef je
                 end
                 k = find(keyCode, 1);
                 if k == ptb.keyEscape
+                    Screen('CloseAll');
+                    clear mex
                     doNext = false;
                     KbReleaseWait;
                     return;
