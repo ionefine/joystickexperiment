@@ -98,7 +98,7 @@ classdef jea
                     [d, p, tmpCost] = jea.modifiedsoftmax(prms, d, p);
                 elseif strcmp(prms.model_components(c), 'power_law')
                     [d, p, tmpCost] = jea.power_law(prms, d, p);
-                elseif sum(ismember(prms.model_components(c), 'prctile_scale'))
+                elseif strcmp(prms.model_components{c}, 'prctile_scale')
                     [d, p, tmpCost] = jea.prctile_scale(prms, d, p);
                 else
                     error('model component of prms.model_components not recognized');
@@ -262,7 +262,7 @@ classdef jea
             end
             % zero out beginning, where the hdr hasn't reached asymptote
             d.contrast(:, 1:length(d.hdr), :) = NaN;
-            d.response(1:length(d.hdr)) = NaN;
+            d.response(:, 1:length(d.hdr)) = NaN;
             cost =  jea.getCost(p.hdr_delay, prms.penalize_hdr_delay) + ...
                 jea.getCost(p.hdr_tau, prms.penalize_hdr_tau) + jea.getCost_w(p.w) +jea.getCost(p.w, prms.penalize_w);
         end

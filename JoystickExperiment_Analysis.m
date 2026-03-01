@@ -117,7 +117,12 @@ for fileIndex = 1:numel(stimulusFiles)
     [~, fitErrorNoCost, analysisData] = jea.fit_model(modelParams, fitOptions, analysisData);
 
     % Normalize attenuation vector and compute summaries.
-    modelParams.k = modelParams.k ./ max(modelParams.k);
+    maxK = max(modelParams.k);
+    if isfinite(maxK) && maxK > 0
+        modelParams.k = modelParams.k ./ maxK;
+    else
+        warning('Skipping k normalization because max(k) is non-positive or non-finite.');
+    end
     modelParams.min_k = min(modelParams.k);
     modelParams.err_noCost = fitErrorNoCost;
 
@@ -140,7 +145,9 @@ for fileIndex = 1:numel(stimulusFiles)
     modelParams.corr = 1 - fitErrorNoCost;
 
     % Save one row per subject/file.
-    modelParams.w = abs(modelParams.w);
+    if isfield(modelParams, 'w')
+        modelParams.w = abs(modelParams.w);
+    end
     if isempty(summaryTable)
         summaryTable = struct2table(modelParams);
     else
