@@ -32,6 +32,7 @@ classdef je
                 stim.temporal.nBinoCycles = 2; % in cycles
                 stim.temporal.DichDur = 48; % in secs: doesn't include DurPre and the BinocularPeriod
             end
+            stim.temporal.DurPostZero = 2; % in secs at 0 contrast to end each run
             
             stim.temporal.HzSlowCycle = 1/8;
             stim.temporal.HzFastCycle = 1/6;
@@ -947,11 +948,11 @@ end
                     kSlow = randi(nSlowCycles);
                     kFast = randi(nFastCycles);
 
-                    fastStart = stim.temporal.DurFastCycle*(kFast-1) + 0.75*stim.temporal.DurFastCycle;
-                    fastEnd   = stim.temporal.DurFastCycle*kFast     + 0.75*stim.temporal.DurFastCycle;
+                    fastStart = stim.temporal.DurFastCycle*(kFast-1);
+                    fastEnd   = stim.temporal.DurFastCycle*kFast;
 
-                    slowStart = stim.temporal.DurSlowCycle*(kSlow-1) + 0.75*stim.temporal.DurSlowCycle;
-                    slowEnd   = stim.temporal.DurSlowCycle*kSlow     + 0.75*stim.temporal.DurSlowCycle;
+                    slowStart = stim.temporal.DurSlowCycle*(kSlow-1);
+                    slowEnd   = stim.temporal.DurSlowCycle*kSlow;
 
                     hasNonOverlap = (fastEnd <= slowStart) || (slowEnd <= fastStart);
                 end
@@ -981,9 +982,10 @@ end
             nFramesPre  = round(stim.temporal.DurPre * effectiveFrameRateHz);
             nFramesBino = round(stim.temporal.nBinoCycles * stim.temporal.DurBinoCycle * effectiveFrameRateHz);
             nFramesDich = round(stim.temporal.DichDur * effectiveFrameRateHz);
+            nFramesPost = round(stim.temporal.DurPostZero * effectiveFrameRateHz);
             tDich = (0:(nFramesDich-1)) / effectiveFrameRateHz;  % time vector for the dichoptic/monocular bit
 
-            nFramesTotal = nFramesPre + nFramesBino + nFramesDich;
+            nFramesTotal = nFramesPre + nFramesBino + nFramesDich + nFramesPost;
             tTotal =  (0:(nFramesTotal-1)) / effectiveFrameRateHz;   % time vector including pre and bino
             stim.data.contrast = zeros(nruns, nFramesTotal, 2);
             stim.data.t = tTotal;
@@ -993,7 +995,12 @@ end
 
             % build binocular frames
             tBino = (0:(nFramesBino-1)) / effectiveFrameRateHz;
-            FramesBino = (sin(2*pi*stim.temporal.HzBinoCycle*tBino) + 1) / 2;
+            FramesBino = (sin(2*pi*stim.temporal.HzBinoCycle*tBino - pi/2) + 1) / 2;
+            if nFramesBino > 0
+                FramesBino(end) = 0;
+            end
+
+            FramesPost = zeros(1, nFramesPost);
 
             % initialize masks, set them for pre and bino period
             stim.data.Pre_ON = false(nruns, nFramesTotal);
@@ -1007,6 +1014,10 @@ end
             end
 
             stim.data.Mono_ON = false(nruns, nFramesTotal);
+            stim.data.Post_ON = false(nruns, nFramesTotal);
+            if nFramesPost > 0
+                stim.data.Post_ON(:, nFramesPre + nFramesBino + nFramesDich + (1:nFramesPost)) = true;
+            end
 
             % Build timecourses fior the dichoptic/monocular bit
             if ~opts.isBinocularPlayback
@@ -1014,15 +1025,19 @@ end
 
                     % Contrast modulation is defined by frequency (Hz), so the
                     % sinusoid argument must be 2*pi*f*t.
-                    tempFast = (sin(2*pi*stim.temporal.HzFastCycle*tDich) + 1) / 2;
-                    tempSlow = (sin(2*pi*stim.temporal.HzSlowCycle*tDich) + 1) / 2;
+                    tempFast = (sin(2*pi*stim.temporal.HzFastCycle*tDich - pi/2) + 1) / 2;
+                    tempSlow = (sin(2*pi*stim.temporal.HzSlowCycle*tDich - pi/2) + 1) / 2;
+                    if nFramesDich > 0
+                        tempFast(end) = 0;
+                        tempSlow(end) = 0;
+                    end
                     Mono_ON = zeros(size(tempFast));
 
                     if stim.temporal.dropFastEye(runNum) > 0
                         k = stim.temporal.dropFastEye(runNum);
                         fastDropMask = ...
-                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle;
+                            tDich >= stim.temporal.DurFastCycle*(k-1) & ...
+                            tDich <= stim.temporal.DurFastCycle*k;
                         tempFast(fastDropMask) = 0;
                         Mono_ON(fastDropMask) = 1;
                     end
@@ -1030,8 +1045,8 @@ end
                     if stim.temporal.dropSlowEye(runNum) > 0
                         k = stim.temporal.dropSlowEye(runNum);
                         slowDropMask = ...
-                            tDich > stim.temporal.DurSlowCycle*(k-1) + 0.75*stim.temporal.DurSlowCycle & ...
-                            tDich < stim.temporal.DurSlowCycle*k     + 0.75*stim.temporal.DurSlowCycle;
+                            tDich >= stim.temporal.DurSlowCycle*(k-1) & ...
+                            tDich <= stim.temporal.DurSlowCycle*k;
                         tempSlow(slowDropMask) = 0;
                         Mono_ON(slowDropMask) = 1;
                     end
@@ -1045,14 +1060,14 @@ end
                             error('fastEye must be 0 or 1');
                     end
 
-                    stim.data.contrast(runNum,:,1) = [FramesPre, FramesBino, LE];
-                    stim.data.contrast(runNum,:,2) = [FramesPre, FramesBino, RE];
-                    stim.data.Mono_ON(runNum, :) =  [0.*FramesPre, 0.*FramesBino, Mono_ON];
+                    stim.data.contrast(runNum,:,1) = [FramesPre, FramesBino, LE, FramesPost];
+                    stim.data.contrast(runNum,:,2) = [FramesPre, FramesBino, RE, FramesPost];
+                    stim.data.Mono_ON(runNum, :) =  [0.*FramesPre, 0.*FramesBino, Mono_ON, 0.*FramesPost];
                 end
-                stim.data.Dich_ON = ~stim.data.Pre_ON & ~stim.data.Bino_ON & ~stim.data.Mono_ON;
+                stim.data.Dich_ON = ~stim.data.Pre_ON & ~stim.data.Bino_ON & ~stim.data.Mono_ON & ~stim.data.Post_ON;
             else % just binocular
-                stim.data.contrast(1:nruns,:,1) = repmat([FramesPre, FramesBino], nruns, 1);
-                stim.data.contrast(1:nruns,:,2) = repmat([FramesPre, FramesBino], nruns, 1);
+                stim.data.contrast(1:nruns,:,1) = repmat([FramesPre, FramesBino, FramesPost], nruns, 1);
+                stim.data.contrast(1:nruns,:,2) = repmat([FramesPre, FramesBino, FramesPost], nruns, 1);
                 stim.data.Mono_ON = false(nruns, nFramesTotal);
                 stim.data.Dich_ON = false(nruns, nFramesTotal);
             end
