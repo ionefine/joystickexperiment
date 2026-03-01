@@ -5,7 +5,6 @@ opts = struct();
 
 % ---------- Control mode ----------
 opts.user_controlled     = true;   % joystick drives contrast live
-opts.computer_controlled = false;  % use stim.data.contrast timecourses
 opts.isBinocularPlayback = true;  % if true does a prolonged set of binocular cycles
 opts.enableFeedback      = true;
 opts.feedbackDelaySec    = 0.5;
@@ -23,8 +22,8 @@ if opts.user_controlled
     opts.enableFeedback = false;
 end
 
-if opts.user_controlled == opts.computer_controlled
-    error('Set exactly one of opts.user_controlled or opts.computer_controlled to true.');
+if ~islogical(opts.user_controlled) || ~isscalar(opts.user_controlled)
+    error('opts.user_controlled must be a logical scalar.');
 end
 
 % ---------- Contrast mapping ----------
