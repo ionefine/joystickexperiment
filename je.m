@@ -131,7 +131,7 @@ classdef je
         end
 
         function saveDir = ensureOutputDir(subjectId, homeDir)
-            saveDir = fullfile(homeDir, 'output', subjectId);
+            saveDir = fullfile(homeDir, 'output');
             if ~isfolder(saveDir)
                 mkdir(saveDir);
             end
