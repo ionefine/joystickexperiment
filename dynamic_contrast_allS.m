@@ -19,7 +19,13 @@ end
 % ------------------------- Analysis options -------------------------
 datatype = 'psychophysics_bandpass';
 stimType = 'congruent';
-outputRoot = 'output';
+defaultOutputRoot = 'output';
+
+% Let the user choose the output folder to analyse.
+outputRoot = uigetdir(defaultOutputRoot, 'Select folder that contains participant output files');
+if isequal(outputRoot, 0)
+    error('Folder selection was cancelled.');
+end
 
 % Discover files created by JoystickExperiment_Run:
 %   output/<subjectId>/<subjectId>_congruent_psychophysics_bandpass.mat
@@ -28,6 +34,24 @@ stimFiles = dc.find_stim_output_files(outputRoot, filePattern);
 
 if isempty(stimFiles)
     error('No stimulus files found at %s using pattern %s', outputRoot, filePattern);
+end
+
+% Let user choose whether to analyse all files or a subset.
+selectMode = questdlg(sprintf('Found %d file(s). Analyse all or choose a subset?', numel(stimFiles)), ...
+    'Select participant files', 'All files', 'Choose subset', 'Cancel', 'All files');
+
+if isempty(selectMode) || strcmp(selectMode, 'Cancel')
+    error('File selection was cancelled.');
+elseif strcmp(selectMode, 'Choose subset')
+    labels = strcat({stimFiles.folder}', filesep, {stimFiles.name}');
+    [idx, ok] = listdlg('PromptString', 'Select participant files to analyse', ...
+                        'ListString', labels, ...
+                        'SelectionMode', 'multiple', ...
+                        'ListSize', [900, 300]);
+    if ~ok || isempty(idx)
+        error('No files were selected for analysis.');
+    end
+    stimFiles = stimFiles(idx);
 end
 
 % Initialize a result table lazily.
