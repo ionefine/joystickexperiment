@@ -1,55 +1,42 @@
-function [d,p,prms] = dynamic_contrast(d, p, prms )%% full data set - initial data cleaning
+function [d, p, prms] = dynamic_contrast(d, p, prms)
+% DYNAMIC_CONTRAST Fit the dynamic-contrast model to one dataset.
+%
+% Inputs
+%   d     - analysis data struct (dc format)
+%   p     - model parameter struct
+%   prms  - fitting options struct
+%
+% Output
+%   d, p, prms with fitted model outputs/parameters
 
+% Per-sample validity mask (run x time)
 d.ind = ones(size(d.response));
 
-if prms.joystickonly     % 'true' then remove passive trials where joystick wasn't used
-    d.ind(~d.joyused, :) = 0;
+% Optionally keep only joystick-controlled trials.
+if prms.joystickonly
+    if ~isfield(d, 'joyused')
+        warning('prms.joystickonly=true but d.joyused is missing. Keeping all runs.');
+    else
+        d.ind(~d.joyused, :) = 0;
+    end
 end
 
 if prms.debuggingPlots
-    prms = dc.image_data(d, prms); % s raw data: LE & RE contrast and response
+    % Show raw data (contrast + response) before cleaning.
+    prms = dc.image_data(d, prms);
 end
 
-d  = dc.clean_data(d, prms, {'response_range'}); % get rid of runs that didn't vary across a decent range during calibration
+% Remove low-information runs.
+d = dc.clean_data(d, prms, {'response_range'});
 
-%% binocular dataset - find hdr, delay & response slope
-
-%% monocular dataset - calculate monocular attenuation
-
+% Fit temporal kernel parameters (delay/tau) on binocular-only samples.
 [d_bino, prms] = dc.select_data(d, 'bino', prms);
 d_bino.prediction3D = d_bino.contrast;
-freeList = {'hdr_delay', 'hdr_tau'};
-p = fitUW('dc.fit_model', p, freeList, prms, d_bino);
+p = fitUW('dc.fit_model', p, {'hdr_delay', 'hdr_tau'}, prms, d_bino);
 
-
-for i = 1:prms.fit
-
-    % if sum(contains(prms.freeList, 'k')) &  strcmp(p.group, 'AM')
-    %     %  old_errFtn = p.errFtn;
-    %     %  p.errFtn = 'corr';
-    %     [d_mono,prms] = dc.select_data(d, 'mono', prms);
-    %     d_mono.prediction3D = d_mono.contrast;
-    %     p = fitUW('dc.fit_model', p, {'k'}, prms, d_mono);
-    %     p.k = p.k./max(p.k);
-    %     % p.errFtn = old_errFtn;
-    % end
-    % no_k = ~contains(prms.freeList, 'k');
-    %% fit & plot remainder of the parameters
+% Fit integration parameter(s) on all valid samples.
+for i = 1:prms.fit %#ok<NASGU>
     d.prediction3D = d.contrast;
     p = fitUW('dc.fit_model', p, {'w'}, prms, d);
-    [errtn, errnoCost, d] = dc.fit_model(p, prms, d);
-    %  p = fitUW('dc.fit_model', p, {'k'}, prms, d);
-    % p.k = p.k./max(p.k);
-    %  p = fitUW('dc.fit_model', p, {'w'}, prms, d);
-    %  [errtn, errnoCost, d] = dc.fit_model(p, prms, d);
-
-
-    % else % using preset parameters
-    %     d.prediction3D = d.contrast;
-    %     freeList = {'scalefac'};
-    %     p = fitUW('dc.fit_model', p, freeList, prms, d);
-    %     p.k = [1 1]; p.w = 0;
-    %     [err, errnoCost, d] = dc.fit_model( p, prms, d);
-    % end
+    [~, ~, d] = dc.fit_model(p, prms, d);
 end
-
