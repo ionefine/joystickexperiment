@@ -930,56 +930,37 @@ end
             % makeJoystickPsychoConditionConfig
             %
             % Build the randomized run schedule for the joystick psycho experiment.
-            %
-            % Inputs
-            %   hz.Slow, hz.Fast : temporal frequencies (Hz)
-            %   stim.duration    : duration of dichoptic segment (seconds)
-            %
-            % Output
-            %   config : struct describing each run:
-            %       dropSlowEye : cycle index k (or 0) where SLOW modulation is dropped
-            %       dropFastEye : cycle index k (or 0) where FAST modulation is dropped
-            %       fastEye     : 0 = LE fast, 1 = RE fast
-            %       runSaved    : bookkeeping flag
-            %       created     : timestamp (string)
+            % Each run contains two monocular periods: one where FAST is dropped
+            % and one where SLOW is dropped. These never overlap in time.
 
-            % Random permutations of cycle indices, i.e. which cycle will
-            % contain the dropout
+            nSlowCycles = round(stim.temporal.DichDur / stim.temporal.DurSlowCycle);
+            nFastCycles = round(stim.temporal.DichDur / stim.temporal.DurFastCycle);
 
-            nSlowCycles = stim.temporal.DichDur/stim.temporal.DurSlowCycle;
-            nFastCycles = stim.temporal.DichDur/stim.temporal.DurFastCycle;
+            stim.temporal.dropSlowEye = zeros(numRuns,1);
+            stim.temporal.dropFastEye = zeros(numRuns,1);
+            stim.temporal.fastEye     = randi([0 1], numRuns, 1);
 
-            whichSlowPerm = randperm(nSlowCycles)';
-            whichFastPerm = randperm(nFastCycles)';
+            for runNum = 1:numRuns
+                % Keep drawing cycle indices until dropout windows are disjoint.
+                hasNonOverlap = false;
+                while ~hasNonOverlap
+                    kSlow = randi(nSlowCycles);
+                    kFast = randi(nFastCycles);
 
-            % Build base schedule:
-            %   slow-drop runs followed by fast-drop runs
-            tempTrialOrder = [whichSlowPerm zeros(nSlowCycles,1); ...
-                zeros(nFastCycles,1) whichFastPerm];
+                    fastStart = stim.temporal.DurFastCycle*(kFast-1) + 0.75*stim.temporal.DurFastCycle;
+                    fastEnd   = stim.temporal.DurFastCycle*kFast     + 0.75*stim.temporal.DurFastCycle;
 
-            % Duplicate schedule to counterbalance eye assignment
-            % Create an "eyes" vector to indicate which eye gets the FAST modulation.
-            % Build a doubled schedule: first copy with eyes=0, second copy with eyes=1.
-            %
-            % fastEye == 0 -> FAST goes to left eye (LE), SLOW to right eye (RE)
-            % fastEye == 1 -> FAST goes to right eye (RE), SLOW to left eye (LE)
+                    slowStart = stim.temporal.DurSlowCycle*(kSlow-1) + 0.75*stim.temporal.DurSlowCycle;
+                    slowEnd   = stim.temporal.DurSlowCycle*kSlow     + 0.75*stim.temporal.DurSlowCycle;
 
-            eyes = [zeros(size(tempTrialOrder,1),1); ...
-                ones(size(tempTrialOrder,1),1)];
+                    hasNonOverlap = (fastEnd <= slowStart) || (slowEnd <= fastStart);
+                end
 
-            % Two copies of trial order + eye assignment, then shuffle rows
-            tempTrialOrder = Shuffle([repmat(tempTrialOrder,2,1) eyes], 2);
+                stim.temporal.dropSlowEye(runNum) = kSlow;
+                stim.temporal.dropFastEye(runNum) = kFast;
+            end
 
-            % For each run:
-            %   - dropSlowEye: 0 means no slow dropout this run; >0 indicates which slow cycle to drop
-            %   - dropFastEye: 0 means no fast dropout this run; >0 indicates which fast cycle to drop
-
-            stim.temporal.dropSlowEye = tempTrialOrder(1:numRuns,1);
-            stim.temporal.dropFastEye = tempTrialOrder(1:numRuns,2);
-            % 0=left is fast, 1=right is fast
-            stim.temporal.fastEye     = tempTrialOrder(1:numRuns,3);
-
-            stim.data.runSaved = false(size(tempTrialOrder(1:numRuns,1)));
+            stim.data.runSaved = false(numRuns,1);
             stim.data.created  = datestr(now);
         end
 
@@ -1034,22 +1015,20 @@ end
 
                     if stim.temporal.dropFastEye(runNum) > 0
                         k = stim.temporal.dropFastEye(runNum);
-                        tempFast( ...
+                        fastDropMask = ...
                             tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 0;
-                        Mono_ON( ...
-                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
+                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle;
+                        tempFast(fastDropMask) = 0;
+                        Mono_ON(fastDropMask) = 1;
                     end
 
                     if stim.temporal.dropSlowEye(runNum) > 0
                         k = stim.temporal.dropSlowEye(runNum);
-                        tempSlow( ...
+                        slowDropMask = ...
                             tDich > stim.temporal.DurSlowCycle*(k-1) + 0.75*stim.temporal.DurSlowCycle & ...
-                            tDich < stim.temporal.DurSlowCycle*k     + 0.75*stim.temporal.DurSlowCycle ) = 0;
-                        Mono_ON( ...
-                            tDich > stim.temporal.DurFastCycle*(k-1) + 0.75*stim.temporal.DurFastCycle & ...
-                            tDich < stim.temporal.DurFastCycle*k     + 0.75*stim.temporal.DurFastCycle) = 1;
+                            tDich < stim.temporal.DurSlowCycle*k     + 0.75*stim.temporal.DurSlowCycle;
+                        tempSlow(slowDropMask) = 0;
+                        Mono_ON(slowDropMask) = 1;
                     end
 
                     switch stim.temporal.fastEye(runNum)
