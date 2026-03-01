@@ -4,7 +4,7 @@ Also requires je methods file.
 
 
 ## Data format conversion
-Use `convert_old_data_format` to convert legacy `.mat` outputs into the current `stim.data.*` format used by `JoystickExperiment_Run` and `dynamic_contrast_allS`.
+Use `convert_old_data_format` to convert legacy `.mat` outputs into the current `stim.data.*` format used by `JoystickExperiment_Run` and `JoystickExperiment_Analysis`.
 
 Examples:
 - Convert one file in place: `convert_old_data_format('output/S01/S01_congruent_psychophysics_bandpass.mat')`
