@@ -26,8 +26,8 @@ classdef je
 
             if opts.isBinocularPlayback == true
                 stim.temporal.DurPre = 2; % in secs
-                stim.temporal.nBinoCycles = 6; % in cycles
-                stim.temporal.DichDur = 0; % in secs: doesn't include DurPre and the BinocularPeriod
+                stim.temporal.nBinoCycles = 2; % in cycles
+                stim.temporal.DichDur = 48; % in secs: binocular replay equivalent of dichoptic period
             else
                 stim.temporal.nBinoCycles = 2; % in cycles
                 stim.temporal.DichDur = 48; % in secs: doesn't include DurPre and the BinocularPeriod
@@ -1076,11 +1076,24 @@ end
                     stim.data.Mono_ON(runNum, :) =  [0.*FramesPre, 0.*FramesBino, Mono_ON, 0.*FramesPost];
                 end
                 stim.data.Dich_ON = ~stim.data.Pre_ON & ~stim.data.Bino_ON & ~stim.data.Mono_ON & ~stim.data.Post_ON;
-            else % just binocular
-                stim.data.contrast(1:nruns,:,1) = repmat([FramesPre, FramesBino, FramesPost], nruns, 1);
-                stim.data.contrast(1:nruns,:,2) = repmat([FramesPre, FramesBino, FramesPost], nruns, 1);
+            else % binocular playback with dichoptic-equivalent segment
+                tempFast = (sin(2*pi*stim.temporal.HzFastCycle*tDich - pi/2) + 1) / 2;
+                tempSlow = (sin(2*pi*stim.temporal.HzSlowCycle*tDich - pi/2) + 1) / 2;
+                if nFramesDich > 0
+                    tempFast(end) = 0;
+                    tempSlow(end) = 0;
+                end
+
+                binocularDichEquivalent = (3*max(tempFast, tempSlow) + min(tempFast, tempSlow)) / 4;
+                playbackContrast = [FramesPre, FramesBino, binocularDichEquivalent, FramesPost];
+
+                stim.data.contrast(1:nruns,:,1) = repmat(playbackContrast, nruns, 1);
+                stim.data.contrast(1:nruns,:,2) = repmat(playbackContrast, nruns, 1);
                 stim.data.Mono_ON = false(nruns, nFramesTotal);
                 stim.data.Dich_ON = false(nruns, nFramesTotal);
+                if nFramesDich > 0
+                    stim.data.Dich_ON(:, nFramesPre + nFramesBino + (1:nFramesDich)) = true;
+                end
             end
         end % end of runs
 
