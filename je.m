@@ -990,8 +990,8 @@ end
             stim.data.contrast = zeros(nruns, nFramesTotal, 2);
             stim.data.t = tTotal;
 
-            % build preduration frames
-            FramesPre = stim.spatial.meanContrast * ones(1, nFramesPre);
+            % build preduration frames (2 s pre-stim at zero contrast)
+            FramesPre = zeros(1, nFramesPre);
 
             % build binocular frames
             tBino = (0:(nFramesBino-1)) / effectiveFrameRateHz;
