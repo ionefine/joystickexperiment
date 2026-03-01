@@ -76,7 +76,7 @@ for iFile = 1:numel(stimFiles)
     end
 
     % Optional contrast flip for bootstrap-like checks.
-    if prms.flipcontrast
+    if isfield(prms, 'flipcontrast') && prms.flipcontrast
         d.contrast = 1 - d.contrast;
     end
 
@@ -133,14 +133,18 @@ for iFile = 1:numel(stimFiles)
         P(end+1, :) = struct2table(p);
     end
 
-    if prms.pauseon
+    if isfield(prms, 'pauseon') && prms.pauseon
         pause;
     end
 end
 
 % ------------------------- Save summary table -------------------------
 if ~isempty(P)
-    outputFile = fullfile('data', sprintf('%s_%s_%s.xlsx', datatype, prms.modelname, datetimeStr));
+    modelName = 'model';
+    if isfield(prms, 'modelname') && ~isempty(prms.modelname)
+        modelName = prms.modelname;
+    end
+    outputFile = fullfile('data', sprintf('%s_%s_%s.xlsx', datatype, modelName, datetimeStr));
     outDir = fileparts(outputFile);
     if ~isempty(outDir) && ~isfolder(outDir)
         mkdir(outDir);
