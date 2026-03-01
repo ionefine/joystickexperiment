@@ -121,8 +121,8 @@ classdef jea
             files = dir(fullfile(rootDir, '**', pattern));
         end
 
-        function [d, subjectId] = stim_to_dc_data(stim, subjectId)
-            % Convert saved stimulus output into the jea analysis format.
+        function [d, subjectId] = stim_to_jea_data(stim, subjectId)
+            % Convert saved stimulus output into the JEA analysis format.
             %
             % Stimulus fields follow JoystickExperiment_Run / je.m naming:
             %   stim.data.contrast(run,time,eye)

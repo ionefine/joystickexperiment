@@ -69,21 +69,16 @@ for fileIndex = 1:numel(stimulusFiles)
         continue;
     end
 
-    % Prefer saved session.subjectId when available.
+    % Subject identifier is stored with the session metadata.
     subjectId = 'unknown';
     if isfield(loadedData, 'session') && isfield(loadedData.session, 'subjectId')
         subjectId = loadedData.session.subjectId;
-    else
-        token = regexp(stimulusFiles(fileIndex).name, '^([^_]+)_', 'tokens', 'once');
-        if ~isempty(token)
-            subjectId = token{1};
-        end
     end
 
     % Convert stimulus-format data -> analysis struct.
-    analysisData = jea.stim_to_dc_data(loadedData.stim, subjectId);
+    analysisData = jea.stim_to_jea_data(loadedData.stim, subjectId);
 
-    % Add identifiers expected by legacy downstream code.
+    % Set identifiers for plotting/logging.
     modelParams.group = {'NA'};
     modelParams.id = {subjectId};
 
@@ -127,7 +122,7 @@ for fileIndex = 1:numel(stimulusFiles)
     modelParams.err_noCost = fitErrorNoCost;
 
     if isfield(modelParams, 'U2')
-        % Eyes organized as [RE LE] in this legacy interpretation.
+        % Eyes organized as [RE LE].
         if modelParams.min_k == modelParams.k(1)
             modelParams.U_FEnAE = modelParams.U3 + 1;
             modelParams.U_AEnFE = modelParams.U2 + 1;
