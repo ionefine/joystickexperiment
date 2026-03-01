@@ -32,6 +32,7 @@ classdef je
                 stim.temporal.nBinoCycles = 2; % in cycles
                 stim.temporal.DichDur = 48; % in secs: doesn't include DurPre and the BinocularPeriod
             end
+            
             stim.temporal.HzSlowCycle = 1/8;
             stim.temporal.HzFastCycle = 1/6;
             stim.temporal.HzBinoCycle = mean([stim.temporal.HzSlowCycle stim.temporal.HzFastCycle]);

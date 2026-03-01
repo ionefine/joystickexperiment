@@ -4,14 +4,18 @@ clear
 opts = struct();
 
 % ---------- Control mode ----------
+<<<<<<< Updated upstream
 opts.user_controlled     = true;   % joystick drives contrast live
+=======
+opts.user_controlled     = false;   % joystick drives contrast live
+opts.computer_controlled = true;  % use stim.data.contrast timecourses
+>>>>>>> Stashed changes
 opts.isBinocularPlayback = true;  % if true does a prolonged set of binocular cycles
 opts.enableFeedback      = true;
 opts.feedbackDelaySec    = 0.5;
 opts.feedbackErrorThresh = 0.2;
 opts.nonius = true ;
 opts.feedbackDelay = .5; % assumed lag if providing feedback
-
 
 opts.numRuns             = 10;     % cap number of runs
 opts.assertTol           = 1e-10;  % float tolerance for sanity check
