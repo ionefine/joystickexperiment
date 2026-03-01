@@ -949,6 +949,61 @@ end
             end
         end
 
+
+        function lagSec = estimateParticipantLagSec(stim, response, display, opts, runIndex)
+            % Estimate participant lag (sec) by finding lag with lowest
+            % mean absolute error in the acceptable response lag window.
+
+            lagWindowSec = [0.1 0.4];
+            if isfield(opts, 'responseLagWindowSec') && numel(opts.responseLagWindowSec) == 2
+                lagWindowSec = sort(opts.responseLagWindowSec(:))';
+            end
+
+            sampleSec = display.ifi * max(1, round(display.updateFrames));
+            minLagFrames = max(1, round(lagWindowSec(1)/sampleSec));
+            maxLagFrames = max(minLagFrames, round(lagWindowSec(2)/sampleSec));
+
+            nFrames = size(stim.data.contrast, 2);
+            evalIndices = find(stim.data.Bino_ON(runIndex, :));
+
+            bestErr = inf;
+            bestLagFrames = NaN;
+
+            for lagFrames = minLagFrames:maxLagFrames
+                targetIndices = evalIndices - lagFrames;
+                validMask = targetIndices >= 1 & targetIndices <= nFrames;
+                evalValid = evalIndices(validMask);
+                targetValid = targetIndices(validMask);
+
+                if isempty(evalValid)
+                    continue;
+                end
+
+                bothBinoMask = stim.data.Bino_ON(runIndex, evalValid) & stim.data.Bino_ON(runIndex, targetValid);
+                evalValid = evalValid(bothBinoMask);
+                targetValid = targetValid(bothBinoMask);
+
+                if isempty(evalValid)
+                    continue;
+                end
+
+                participant = response(evalValid);
+                target = squeeze(stim.data.contrast(runIndex, targetValid, 1))';
+                err = mean(abs(participant - target));
+
+                if err < bestErr
+                    bestErr = err;
+                    bestLagFrames = lagFrames;
+                end
+            end
+
+            if isnan(bestLagFrames)
+                lagSec = NaN;
+            else
+                lagSec = bestLagFrames * sampleSec;
+            end
+        end
+
         % ===================== design timecourses =====================
         function stim = makeJoystickPsychoConditions(stim, numRuns)
             % makeJoystickPsychoConditionConfig

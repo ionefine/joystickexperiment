@@ -136,4 +136,18 @@ while ~stopAll
     end
 end
 
+if opts.isBinocularPlayback
+    fprintf('\nEstimated participant lag per run (binocular playback):\n');
+    savedRuns = find(stim.data.runSaved);
+    for k = 1:numel(savedRuns)
+        runIdx = savedRuns(k);
+        lagSec = je.estimateParticipantLagSec(stim, stim.data.response(runIdx,:), display, opts, runIdx);
+        if isnan(lagSec)
+            fprintf('  Run %d: could not estimate lag (insufficient valid samples).\n', runIdx);
+        else
+            fprintf('  Run %d: %0.3f s\n', runIdx, lagSec);
+        end
+    end
+end
+
 save(fullfile(session.saveDir, [session.subjectId '_congruent_psychophysics_bandpass']), "stim", "display", "opts", "session", "ptb", "audio", "gammaTable");
