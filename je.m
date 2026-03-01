@@ -972,14 +972,19 @@ end
 
             nruns = numel(stim.data.runSaved);
 
-            % Frame counts
-            nFramesPre  = round(stim.temporal.DurPre * display.frameRateHz);
-            nFramesBino = round(stim.temporal.nBinoCycles * stim.temporal.DurBinoCycle * display.frameRateHz);
-            nFramesDich = round(stim.temporal.DichDur * display.frameRateHz);
-            tDich = (0:(nFramesDich-1)) / display.frameRateHz;  % time vector for the dichoptic/monocular bit
+            % Frame counts are based on effective stimulus update rate.
+            % We schedule flips every display.updateFrames refreshes, so
+            % stimulus trajectories must be sampled at that slower rate.
+            updateFrames = max(1, round(display.updateFrames));
+            effectiveFrameRateHz = display.frameRateHz / updateFrames;
+
+            nFramesPre  = round(stim.temporal.DurPre * effectiveFrameRateHz);
+            nFramesBino = round(stim.temporal.nBinoCycles * stim.temporal.DurBinoCycle * effectiveFrameRateHz);
+            nFramesDich = round(stim.temporal.DichDur * effectiveFrameRateHz);
+            tDich = (0:(nFramesDich-1)) / effectiveFrameRateHz;  % time vector for the dichoptic/monocular bit
 
             nFramesTotal = nFramesPre + nFramesBino + nFramesDich;
-            tTotal =  (0:(nFramesTotal-1)) / display.frameRateHz;   % time vector including pre and bino
+            tTotal =  (0:(nFramesTotal-1)) / effectiveFrameRateHz;   % time vector including pre and bino
             stim.data.contrast = zeros(nruns, nFramesTotal, 2);
             stim.data.t = tTotal;
 
@@ -987,7 +992,7 @@ end
             FramesPre = stim.spatial.meanContrast * ones(1, nFramesPre);
 
             % build binocular frames
-            tBino = (0:(nFramesBino-1)) / display.frameRateHz;
+            tBino = (0:(nFramesBino-1)) / effectiveFrameRateHz;
             FramesBino = (sin(2*pi*stim.temporal.HzBinoCycle*tBino) + 1) / 2;
 
             % initialize masks, set them for pre and bino period
