@@ -901,19 +901,27 @@ end
         function audio = maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, frameIndex)
 
             delayFrames = round(opts.feedbackDelay/display.ifi);
-            if frameIndex <= delayFrames
+            responseLagSec = 0.25;
+            if isfield(opts, 'responseLagSec') && ~isempty(opts.responseLagSec)
+                responseLagSec = opts.responseLagSec;
+            end
+            responseLagFrames = round(responseLagSec/display.ifi);
+
+            if frameIndex <= (delayFrames + responseLagFrames)
                 return;
             end
 
-            delayedIndex = frameIndex - delayFrames;
+            evalIndex = frameIndex - delayFrames;
+            targetIndex = evalIndex - responseLagFrames;
 
-            % Congruent-only gate 
-            if ~stim.data.Bino_ON(runIndex, delayedIndex)
+            % Congruent-only gate (both samples should come from binocular period)
+            if ~stim.data.Bino_ON(runIndex, evalIndex) || ~stim.data.Bino_ON(runIndex, targetIndex)
                 return;
             end
 
-            target = stim.data.contrast(runIndex, delayedIndex, 1);
-            err = abs(response(frameIndex) - target);
+            target = stim.data.contrast(runIndex, targetIndex, 1);
+            participant = response(evalIndex);
+            err = abs(participant - target);
             if err <= opts.feedbackErrorThresh
                 return;
             end
