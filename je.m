@@ -1026,8 +1026,10 @@ end
             if ~opts.isBinocularPlayback
                 for runNum = 1:nruns
 
-                    tempFast = (sin(2*pi*tDich / stim.temporal.HzFastCycle) + 1) / 2;
-                    tempSlow = (sin(2*pi*tDich / stim.temporal.HzSlowCycle) + 1) / 2;
+                    % Contrast modulation is defined by frequency (Hz), so the
+                    % sinusoid argument must be 2*pi*f*t.
+                    tempFast = (sin(2*pi*stim.temporal.HzFastCycle*tDich) + 1) / 2;
+                    tempSlow = (sin(2*pi*stim.temporal.HzSlowCycle*tDich) + 1) / 2;
                     Mono_ON = zeros(size(tempFast));
 
                     if stim.temporal.dropFastEye(runNum) > 0
