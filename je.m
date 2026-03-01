@@ -64,21 +64,36 @@ classdef je
 
         function paths = defaultPaths()
             paths = struct();
-            cd ..
-            startPath = pwd;   % or any default
-            chosenPath = uigetdir(pwd, 'Select Experimental Folder');
 
-            if isequal(chosenPath, 0)
-                error('User cancelled folder selection.');
-            end
-            paths.homeDir        = chosenPath;
-            paths.gammaTableFile = [chosenPath, '/LinearizedGammaTable.mat'];
-            paths.noniusDir      = [chosenPath, '/Nonius'];
+            % Run from the directory where this code lives.
+            thisFile = mfilename('fullpath');
+            codeDir = fileparts(thisFile);
+            cd(codeDir);
+
+            paths.homeDir        = codeDir;
+            paths.gammaTableFile = fullfile(codeDir, 'LinearizedGammaTable.mat');
+            paths.noniusDir      = fullfile(codeDir, 'Nonius');
         end
 
         % ===================== Session =====================
         function session = promptSessionInfo(homeDir)
             session = struct();
+
+            diagnosisOptions = {'normally sighted', 'amblyopic', 'binocular disorder'};
+            [diagnosisIndex, ok] = listdlg( ...
+                'PromptString', 'Select participant vision status:', ...
+                'SelectionMode', 'single', ...
+                'ListString', diagnosisOptions, ...
+                'Name', 'Participant Group');
+
+            if ~ok || isempty(diagnosisIndex)
+                error('Experiment cancelled: no participant group selected.');
+            end
+
+            diagnosisPrefix = {'NS', 'AMB', 'BD'};
+            session.visionStatus = diagnosisOptions{diagnosisIndex};
+            session.subjectPrefix = diagnosisPrefix{diagnosisIndex};
+
             answer  = upper(inputdlg('Enter Subject ID:', ...
                 'Subject Information', ...
                 [1 40]));   % [rows cols]
@@ -87,7 +102,11 @@ classdef je
                 error('Experiment cancelled: no Subject ID entered.');
             end
 
-            session.subjectId = upper(strtrim(answer{1}));
+            rawSubjectId = upper(strtrim(answer{1}));
+            session.subjectId = sprintf('%s%s', session.subjectPrefix, rawSubjectId);
+            session.sessionDateTime = datestr(now, 'yyyymmdd_HHMMSS');
+            session.outputFileBase = sprintf('%s_%s_congruent_psychophysics_bandpass', ...
+                session.subjectId, session.sessionDateTime);
 
             session.loopThroughFolders = questdlg('What type of stimulus?', ...
                 'Confirm', ...
