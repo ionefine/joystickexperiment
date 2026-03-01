@@ -13,7 +13,7 @@ function [d, p, prms] = dynamic_contrast(d, p, prms)
 d.ind = ones(size(d.response));
 
 % Optionally keep only joystick-controlled trials.
-if prms.joystickonly
+if isfield(prms, 'joystickonly') && prms.joystickonly
     if ~isfield(d, 'joyused')
         warning('prms.joystickonly=true but d.joyused is missing. Keeping all runs.');
     else
@@ -21,7 +21,7 @@ if prms.joystickonly
     end
 end
 
-if prms.debuggingPlots
+if isfield(prms, 'debuggingPlots') && prms.debuggingPlots
     % Show raw data (contrast + response) before cleaning.
     prms = dc.image_data(d, prms);
 end
@@ -31,11 +31,20 @@ d = dc.clean_data(d, prms, {'response_range'});
 
 % Fit temporal kernel parameters (delay/tau) on binocular-only samples.
 [d_bino, prms] = dc.select_data(d, 'bino', prms);
-d_bino.prediction3D = d_bino.contrast;
-p = fitUW('dc.fit_model', p, {'hdr_delay', 'hdr_tau'}, prms, d_bino);
+if isempty(d_bino.response)
+    warning('No binocular samples found after cleaning; skipping hdr_delay/hdr_tau fit.');
+else
+    d_bino.prediction3D = d_bino.contrast;
+    p = fitUW('dc.fit_model', p, {'hdr_delay', 'hdr_tau'}, prms, d_bino);
+end
 
 % Fit integration parameter(s) on all valid samples.
-for i = 1:prms.fit %#ok<NASGU>
+nFit = 1;
+if isfield(prms, 'fit') && isnumeric(prms.fit) && isscalar(prms.fit) && prms.fit > 0
+    nFit = round(prms.fit);
+end
+
+for i = 1:nFit %#ok<NASGU>
     d.prediction3D = d.contrast;
     p = fitUW('dc.fit_model', p, {'w'}, prms, d);
     [~, ~, d] = dc.fit_model(p, prms, d);
