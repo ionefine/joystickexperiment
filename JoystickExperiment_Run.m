@@ -8,11 +8,9 @@ opts = struct();
 opts.user_controlled     = true;   % joystick drives contrast live
 opts.isBinocularPlayback = false;  % if true does a prolonged set of binocular cycles
 opts.enableFeedback      = true;
-opts.feedbackDelaySec    = 0.5;
 opts.feedbackErrorThresh = 0.2;
 opts.nonius = true ;
-opts.feedbackDelay = .5; % assumed lag if providing feedback
-opts.responseLagSec    = 0.25; % assumed participant response lag relative to stimulus
+opts.responseLagSec      = 0.25; % assumed participant motor/response lag relative to stimulus
 
 opts.numRuns             = 10;     % cap number of runs
 opts.assertTol           = 1e-10;  % float tolerance for sanity check

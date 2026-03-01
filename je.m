@@ -900,7 +900,8 @@ end
 
         function audio = maybePlayCongruentFeedback(audio, display, response, stim, opts, runIndex, frameIndex)
 
-            delayFrames = round(opts.feedbackDelay/display.ifi);
+            delayFrames = 0;
+
             responseLagSec = 0.25;
             if isfield(opts, 'responseLagSec') && ~isempty(opts.responseLagSec)
                 responseLagSec = opts.responseLagSec;
