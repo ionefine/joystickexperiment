@@ -41,6 +41,10 @@ opts.joy.invert    = false;
 opts.joy.smoothing  = 0.15;  % EMA alpha; 0=no smoothing
 opts.contrast.start = 0.5;
 
+% ---------- File chooser defaults ----------
+opts.locations.singleMovieRoot = 'movies';
+opts.locations.movieFolderRoot = 'stimuli';
+
 
 %--------------Paths
 
@@ -52,7 +56,7 @@ addpath(paths.homeDir);
 [stim, display] = je.joystickPsychoParams(opts);
 
 % ---------- Session info ----------
-session = je.promptSessionInfo(paths.homeDir);
+session = je.promptSessionInfo(paths.homeDir, opts);
 session.saveDir = je.ensureOutputDir(session.subjectId, paths.homeDir);
 
 % ---------- design  timecourses ----------
