@@ -51,6 +51,8 @@ addpath(paths.homeDir);
 % ---------- Params ----------
 [stim, display] = je.joystickPsychoParams(opts);
 
+je.setPopupLocation([355 901]);
+
 % ---------- Session info ----------
 session = je.promptSessionInfo(paths.homeDir);
 session.saveDir = je.ensureOutputDir(session.subjectId, paths.homeDir);
