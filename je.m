@@ -76,20 +76,7 @@ classdef je
         end
 
         % ===================== Session =====================
-        function session = promptSessionInfo(homeDir, opts)
-            if nargin < 2 || ~isstruct(opts)
-                opts = struct();
-            end
-            if ~isfield(opts, 'locations') || ~isstruct(opts.locations)
-                opts.locations = struct();
-            end
-            if ~isfield(opts.locations, 'singleMovieRoot') || isempty(opts.locations.singleMovieRoot)
-                opts.locations.singleMovieRoot = 'movies';
-            end
-            if ~isfield(opts.locations, 'movieFolderRoot') || isempty(opts.locations.movieFolderRoot)
-                opts.locations.movieFolderRoot = 'stimuli';
-            end
-
+        function session = promptSessionInfo(homeDir)
             session = struct();
 
             diagnosisOptions = {'normally sighted', 'amblyopic', 'binocular disorder'};
@@ -126,14 +113,14 @@ classdef je
                 'single movie', 'movie folder', 'movie folder');
 
             if strcmp(session.loopThroughFolders, 'single movie')
-                [fileName, folder] = uigetfile(fullfile(homeDir, opts.locations.singleMovieRoot, '*.avi'), 'Choose a movie');
+                [fileName, folder] = uigetfile(fullfile(homeDir,'movies','*.avi'), 'Choose a movie');
                 if isequal(fileName, 0)
                     error('No movie selected.');
                 end
                 session.movieFile   = fileName;
                 session.movieFolder = folder;
             elseif strcmp(session.loopThroughFolders, 'movie folder')
-                session.movieFolder = uigetdir(fullfile(pwd, opts.locations.movieFolderRoot), 'Select movie folder');
+                session.movieFolder = uigetdir(fullfile(pwd, 'stimuli'), 'Select movie folder');
                 if isequal(session.movieFolder, 0)
                     error('User cancelled folder selection.');
                 end
