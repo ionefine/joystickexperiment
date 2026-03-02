@@ -140,14 +140,14 @@ classdef je
                         error('No movie folders found in %s', stimuliRoot);
                     end
 
-                    [selectedIndex, confirmedSelection] = listdlg(...
-                        'PromptString', 'Select a movie folder:', ...
-                        'SelectionMode', 'single', ...
-                        'ListString', folderNames, ...
-                        'ListSize', [320, 240]);
+                    fprintf('Available movie folders in %s\n', stimuliRoot);
+                    for folderIdx = 1:numel(folderNames)
+                        fprintf('  %d) %s\n', folderIdx, folderNames{folderIdx});
+                    end
 
-                    if ~confirmedSelection || isempty(selectedIndex)
-                        error('Experiment cancelled: no movie folder selected.');
+                    selectedIndex = str2double(strtrim(input('Enter folder number: ', 's')));
+                    if isnan(selectedIndex) || selectedIndex < 1 || selectedIndex > numel(folderNames)
+                        error('Experiment cancelled: invalid movie folder selection.');
                     end
 
                     session.movieFolder = fullfile(stimuliRoot, folderNames{selectedIndex});
