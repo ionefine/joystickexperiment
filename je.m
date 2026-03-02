@@ -76,7 +76,7 @@ classdef je
         end
 
         % ===================== Session =====================
-        function session = promptSessionInfo(homeDir)
+        function session = promptSessionInfo(homeDir, opts)
             session = struct();
 
             diagnosisOptions = {'normally sighted', 'amblyopic', 'binocular disorder'};
@@ -105,9 +105,10 @@ classdef je
             session.outputFileBase = sprintf('%s_%s_congruent_psychophysics_bandpass', ...
                 session.subjectId, session.sessionDateTime);
 
-            stimulusType = lower(strtrim(input('Stimulus type (single movie/movie folder) [movie folder]: ', 's')));
-            if isempty(stimulusType)
+            if nargin < 2 || ~isstruct(opts) || ~isfield(opts, 'stimulusType') || isempty(opts.stimulusType)
                 stimulusType = 'movie folder';
+            else
+                stimulusType = lower(strtrim(opts.stimulusType));
             end
 
             switch stimulusType

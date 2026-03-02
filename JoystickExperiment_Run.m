@@ -12,6 +12,8 @@ opts.feedbackErrorThresh = 0.2;
 opts.nonius = true ;
 opts.responseLagWindowSec = [0 0.5]; % acceptable participant motor/response lag window (s)
 
+opts.stimulusType       = 'movie folder'; % options: 'movie folder' (default) or 'single movie'
+
 opts.numRuns             = 10;     % cap number of runs
 opts.assertTol           = 1e-10;  % float tolerance for sanity check
 
@@ -52,7 +54,7 @@ addpath(paths.homeDir);
 [stim, display] = je.joystickPsychoParams(opts);
 
 % ---------- Session info ----------
-session = je.promptSessionInfo(paths.homeDir);
+session = je.promptSessionInfo(paths.homeDir, opts);
 session.saveDir = je.ensureOutputDir(session.subjectId, paths.homeDir);
 
 % ---------- design  timecourses ----------
