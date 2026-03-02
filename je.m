@@ -80,54 +80,68 @@ classdef je
             session = struct();
 
             diagnosisOptions = {'normally sighted', 'amblyopic', 'binocular disorder'};
-            [diagnosisIndex, ok] = listdlg( ...
-                'PromptString', 'Select participant vision status:', ...
-                'SelectionMode', 'single', ...
-                'ListString', diagnosisOptions, ...
-                'Name', 'Participant Group');
+            diagnosisPrefix = {'NS', 'AMB', 'BD'};
 
-            if ~ok || isempty(diagnosisIndex)
-                error('Experiment cancelled: no participant group selected.');
+            fprintf('Select participant vision status\n');
+            for idx = 1:numel(diagnosisOptions)
+                fprintf('  %d) %s\n', idx, diagnosisOptions{idx});
             end
 
-            diagnosisPrefix = {'NS', 'AMB', 'BD'};
+            diagnosisIndex = str2double(strtrim(input('Enter choice number: ', 's')));
+            if isnan(diagnosisIndex) || diagnosisIndex < 1 || diagnosisIndex > numel(diagnosisOptions)
+                error('Experiment cancelled: invalid participant group selection.');
+            end
+
             session.visionStatus = diagnosisOptions{diagnosisIndex};
             session.subjectPrefix = diagnosisPrefix{diagnosisIndex};
 
-            answer  = upper(inputdlg('Enter Subject ID:', ...
-                'Subject Information', ...
-                [1 40]));   % [rows cols]
-
-            if isempty(answer)
+            rawSubjectId = upper(strtrim(input('Enter Subject ID: ', 's')));
+            if isempty(rawSubjectId)
                 error('Experiment cancelled: no Subject ID entered.');
             end
 
-            rawSubjectId = upper(strtrim(answer{1}));
             session.subjectId = sprintf('%s%s', session.subjectPrefix, rawSubjectId);
             session.sessionDateTime = datestr(now, 'yyyymmdd_HHMMSS');
             session.outputFileBase = sprintf('%s_%s_congruent_psychophysics_bandpass', ...
                 session.subjectId, session.sessionDateTime);
 
-            session.loopThroughFolders = questdlg('What type of stimulus?', ...
-                'Confirm', ...
-                'single movie', 'movie folder', 'movie folder');
-
-            if strcmp(session.loopThroughFolders, 'single movie')
-                [fileName, folder] = uigetfile(fullfile(homeDir,'movies','*.avi'), 'Choose a movie');
-                if isequal(fileName, 0)
-                    error('No movie selected.');
-                end
-                session.movieFile   = fileName;
-                session.movieFolder = folder;
-            elseif strcmp(session.loopThroughFolders, 'movie folder')
-                session.movieFolder = uigetdir(fullfile(pwd, 'stimuli'), 'Select movie folder');
-                if isequal(session.movieFolder, 0)
-                    error('User cancelled folder selection.');
-                end
-            else
-                error('Invalid stimulus type');
+            stimulusType = lower(strtrim(input('Stimulus type (single movie/movie folder) [movie folder]: ', 's')));
+            if isempty(stimulusType)
+                stimulusType = 'movie folder';
             end
-            session.offsetLeft = [0 0];  session.offsetRight = [0 0]; % initialize nonius values
+
+            switch stimulusType
+                case 'single movie'
+                    session.loopThroughFolders = 'single movie';
+                    moviePath = strtrim(input(sprintf('Enter full path to AVI movie (default: %s): ', fullfile(homeDir, 'movies')), 's'));
+                    if isempty(moviePath)
+                        error('No movie selected.');
+                    end
+                    if ~isfile(moviePath)
+                        error('Movie file not found: %s', moviePath);
+                    end
+                    [folder, fileName, ext] = fileparts(moviePath);
+                    session.movieFile = [fileName ext];
+                    session.movieFolder = [folder filesep];
+
+                case 'movie folder'
+                    session.loopThroughFolders = 'movie folder';
+                    defaultFolder = fullfile(pwd, 'stimuli');
+                    folderPath = strtrim(input(sprintf('Enter movie folder path (default: %s): ', defaultFolder), 's'));
+                    if isempty(folderPath)
+                        folderPath = defaultFolder;
+                    end
+                    if ~isfolder(folderPath)
+                        error('Movie folder not found: %s', folderPath);
+                    end
+                    session.movieFolder = folderPath;
+
+                otherwise
+                    error('Invalid stimulus type. Use "single movie" or "movie folder".');
+            end
+
+            session.offsetLeft = [0 0];
+            session.offsetRight = [0 0]; % initialize nonius values
         end
 
         function saveDir = ensureOutputDir(subjectId, homeDir)
@@ -146,16 +160,11 @@ classdef je
                 end
                 gammaTable = s.gammaTable;
             catch
-                choice = questdlg( ...
-                    'Calibration file not found. Using linear values instead. Continue?', ...
-                    'Calibration Warning', ...
-                    'Yes', 'No', 'No');
-
-                if ~strcmp(choice, 'Yes')
+                reply = lower(strtrim(input('Calibration file not found. Use linear values instead? (y/n): ', 's')));
+                if ~strcmp(reply, 'y')
                     error('Experiment cancelled by user.');
-                else
-                    gammaTable = repmat(linspace(0, 1, 256)', 1, 3);
                 end
+                gammaTable = repmat(linspace(0, 1, 256)', 1, 3);
             end
         end
 
