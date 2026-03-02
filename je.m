@@ -126,15 +126,30 @@ classdef je
 
                 case 'movie folder'
                     session.loopThroughFolders = 'movie folder';
-                    defaultFolder = fullfile(pwd, 'stimuli');
-                    folderPath = strtrim(input(sprintf('Enter movie folder path (default: %s): ', defaultFolder), 's'));
-                    if isempty(folderPath)
-                        folderPath = defaultFolder;
+                    stimuliRoot = fullfile(pwd, 'stimuli');
+                    if ~isfolder(stimuliRoot)
+                        error('Stimuli folder not found: %s', stimuliRoot);
                     end
-                    if ~isfolder(folderPath)
-                        error('Movie folder not found: %s', folderPath);
+
+                    folderInfo = dir(stimuliRoot);
+                    isSubfolder = [folderInfo.isdir] & ~ismember({folderInfo.name}, {'.', '..'});
+                    folderNames = sort({folderInfo(isSubfolder).name});
+
+                    if isempty(folderNames)
+                        error('No movie folders found in %s', stimuliRoot);
                     end
-                    session.movieFolder = folderPath;
+
+                    [selectedIndex, confirmedSelection] = listdlg(...
+                        'PromptString', 'Select a movie folder:', ...
+                        'SelectionMode', 'single', ...
+                        'ListString', folderNames, ...
+                        'ListSize', [320, 240]);
+
+                    if ~confirmedSelection || isempty(selectedIndex)
+                        error('Experiment cancelled: no movie folder selected.');
+                    end
+
+                    session.movieFolder = fullfile(stimuliRoot, folderNames{selectedIndex});
 
                 otherwise
                     error('Invalid stimulus type. Use "single movie" or "movie folder".');
