@@ -17,7 +17,7 @@ stimulusType = 'congruent';
 defaultOutputRoot = 'output';
 
 % Let the user choose the output folder to analyse.
-outputRoot = je.uigetdirOnTop(defaultOutputRoot, 'Select folder that contains participant output files');
+outputRoot = uigetdir(defaultOutputRoot, 'Select folder that contains participant output files');
 if isequal(outputRoot, 0)
     error('Folder selection was cancelled.');
 end
@@ -32,14 +32,14 @@ if isempty(stimulusFiles)
 end
 
 % Let user choose whether to analyse all files or a subset.
-selectionMode = je.questdlgOnTop(sprintf('Found %d file(s). Analyse all or choose a subset?', numel(stimulusFiles)), ...
+selectionMode = questdlg(sprintf('Found %d file(s). Analyse all or choose a subset?', numel(stimulusFiles)), ...
     'Select participant files', 'All files', 'Choose subset', 'Cancel', 'All files');
 
 if isempty(selectionMode) || strcmp(selectionMode, 'Cancel')
     error('File selection was cancelled.');
 elseif strcmp(selectionMode, 'Choose subset')
     fileLabels = strcat({stimulusFiles.folder}', filesep, {stimulusFiles.name}');
-    [selectedFileIndex, ok] = je.listdlgOnTop('PromptString', 'Select participant files to analyse', ...
+    [selectedFileIndex, ok] = listdlg('PromptString', 'Select participant files to analyse', ...
                                       'ListString', fileLabels, ...
                                       'SelectionMode', 'multiple', ...
                                       'ListSize', [900, 300]);

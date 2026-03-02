@@ -244,8 +244,6 @@ classdef jea
 
             d = jea.gamma(d, p);
             if size(d.hdr, 2)>size(prediction, 3)
-                commandwindow;
-                drawnow;
                 errordlg('specifying eye-specific delay, but hdr is calculated after eyes combined');
             end
             prediction(isnan(prediction)) = 0.5;
