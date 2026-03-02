@@ -80,7 +80,7 @@ classdef je
             session = struct();
 
             diagnosisOptions = {'normally sighted', 'amblyopic', 'binocular disorder'};
-            [diagnosisIndex, ok] = je.listdlgOnTop( ...
+            [diagnosisIndex, ok] = listdlg( ...
                 'PromptString', 'Select participant vision status:', ...
                 'SelectionMode', 'single', ...
                 'ListString', diagnosisOptions, ...
@@ -94,7 +94,7 @@ classdef je
             session.visionStatus = diagnosisOptions{diagnosisIndex};
             session.subjectPrefix = diagnosisPrefix{diagnosisIndex};
 
-            answer  = upper(je.inputdlgOnTop('Enter Subject ID:', ...
+            answer  = upper(inputdlg('Enter Subject ID:', ...
                 'Subject Information', ...
                 [1 40]));   % [rows cols]
 
@@ -108,19 +108,19 @@ classdef je
             session.outputFileBase = sprintf('%s_%s_congruent_psychophysics_bandpass', ...
                 session.subjectId, session.sessionDateTime);
 
-            session.loopThroughFolders = je.questdlgOnTop('What type of stimulus?', ...
+            session.loopThroughFolders = questdlg('What type of stimulus?', ...
                 'Confirm', ...
                 'single movie', 'movie folder', 'movie folder');
 
             if strcmp(session.loopThroughFolders, 'single movie')
-                [fileName, folder] = je.uigetfileOnTop(fullfile(homeDir,'movies','*.avi'), 'Choose a movie');
+                [fileName, folder] = uigetfile(fullfile(homeDir,'movies','*.avi'), 'Choose a movie');
                 if isequal(fileName, 0)
                     error('No movie selected.');
                 end
                 session.movieFile   = fileName;
                 session.movieFolder = folder;
             elseif strcmp(session.loopThroughFolders, 'movie folder')
-                session.movieFolder = je.uigetdirOnTop(fullfile(pwd, 'stimuli'), 'Select movie folder');
+                session.movieFolder = uigetdir(fullfile(pwd, 'stimuli'), 'Select movie folder');
                 if isequal(session.movieFolder, 0)
                     error('User cancelled folder selection.');
                 end
@@ -146,7 +146,7 @@ classdef je
                 end
                 gammaTable = s.gammaTable;
             catch
-                choice = je.questdlgOnTop( ...
+                choice = questdlg( ...
                     'Calibration file not found. Using linear values instead. Continue?', ...
                     'Calibration Warning', ...
                     'Yes', 'No', 'No');
@@ -285,37 +285,6 @@ classdef je
                 % Axis mapping guess (you can change after a quick test)
                 ptb.input.axisMap = struct('x',1,'y',2,'slider',3);
             end
-        end
-
-        % ===================== Dialog helpers =====================
-        function focusCommandWindow()
-            commandwindow;
-            drawnow;
-        end
-
-        function [selection, ok] = listdlgOnTop(varargin)
-            je.focusCommandWindow();
-            [selection, ok] = listdlg(varargin{:});
-        end
-
-        function answer = inputdlgOnTop(varargin)
-            je.focusCommandWindow();
-            answer = inputdlg(varargin{:});
-        end
-
-        function choice = questdlgOnTop(varargin)
-            je.focusCommandWindow();
-            choice = questdlg(varargin{:});
-        end
-
-        function [fileName, folder] = uigetfileOnTop(varargin)
-            je.focusCommandWindow();
-            [fileName, folder] = uigetfile(varargin{:});
-        end
-
-        function folder = uigetdirOnTop(varargin)
-            je.focusCommandWindow();
-            folder = uigetdir(varargin{:});
         end
 
         function idx = selectJoystickIndex(gamepadNames)
