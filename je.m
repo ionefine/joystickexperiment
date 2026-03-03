@@ -330,7 +330,7 @@ classdef je
             idx = [];
             for i = 1:numel(gamepadNames)
                 nm = lower(gamepadNames{i});
-                if contains(nm, 'thrustmaster', 'IgnoreCase', true ) 
+                if contains(nm, 'thrustmaster', 'IgnoreCase', true) && ~contains(nm, 'key', 'IgnoreCase', true)
                     idx = i;
                     break;
                 end
@@ -814,7 +814,7 @@ classdef je
                 state.x = Gamepad('GetAxis', j, ax.x);
                 state.y = Gamepad('GetAxis', j, ax.y);
 
-                slider = Gamepad('GetAxis', j, ax.slider);
+                slider = Gamepad('GetAxis', j, 5);
                 state.slider01 = je.normalizeSlider01(slider);
 
                 state.joystickButtons = [];
