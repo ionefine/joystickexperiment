@@ -381,9 +381,9 @@ classdef je
                 screenRes = opts.winRect;
             else
                 screenRes = Screen('Rect', 0);
-                screenRes(3) = screenRes(3)/2;
             end
-            screenCtr = [screenRes(3)/2, screenRes(4)/2];
+            screenRes(3) = screenRes(3)/2;
+            screenCtr = screenRes(3:4)/2;
             stereoMode = 4;
 
             [penWidth, crossLength, boxSize] = je.alignmentStimulusParams(whichStimuli);
