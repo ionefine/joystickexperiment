@@ -484,7 +484,7 @@ classdef je
             ListenChar(2);
             endTask = false;
 
-            cleanupObj = onCleanup(@() je.cleanupAlignmentTask(window, usingExternalWindow)); %#ok<NASGU>
+            cleanupObj = onCleanup(@() je.cleanupAlignmentTask(window, usingExternalWindow)); 
 
             while ~endTask
                 Screen('SelectStereoDrawBuffer', window, 0);
