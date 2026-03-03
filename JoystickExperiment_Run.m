@@ -83,7 +83,7 @@ if opts.nonius
 end
 
 audio = je.initFeedbackAudio(stim.tone);
-cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio)); %#ok<NASGU>
+%cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio));
 % ------------ Generate stimuli------------------
 stim = je.generateStimulusTimeCourses(stim, display, opts);
 
