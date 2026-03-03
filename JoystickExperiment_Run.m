@@ -78,9 +78,9 @@ if opts.nonius
     [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
         'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
         'useBgPattern', 'y', 'useJoystick', 'n', ...
-        'window', ptb.win, 'ifi', display.ifi);
+        'window', ptb.win, 'ifi', display.ifi, 'winRect', ptb.winRect);
 end
-Screen('Close All');
+
 audio = je.initFeedbackAudio(stim.tone);
 cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio));
 % ------------ Generate stimuli------------------
@@ -93,7 +93,6 @@ stim.spatial.innerRect = CenterRect([0 0 (fixPix-10) (fixPix-10)], ptb.winRect);
 
 % ---------- Run loop ----------
 stopAll = false;
-[display, ptb] = je.initPtb(display, stim.fix.textSizePt, gammaTable);
 while ~stopAll
     je.abortIfEscape();    
     runsComplete = sum(stim.data.runSaved);
