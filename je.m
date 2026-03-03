@@ -274,7 +274,7 @@ classdef je
 
             ptb.flipTimestamp = Screen('Flip', ptb.win);
             HideCursor;
-            ptb.keyEscape = KbName('ESCAPE');
+            ptb.keyEscape = je.resolveKeyName({'ESCAPE'});
 
             % -----------------------------
             % Thrustmaster / joystick input
@@ -396,12 +396,12 @@ classdef je
                 joystickMiddle = 128;
             else
                 KbName('UnifyKeyNames');
-                keys.escape = KbName('ESCAPE');
-                keys.left = KbName('LeftArrow');
-                keys.right = KbName('RightArrow');
-                keys.up = KbName('UpArrow');
-                keys.down = KbName('DownArrow');
-                keys.space = KbName('space');
+                keys.escape = je.resolveKeyName({'ESCAPE'});
+                keys.left = je.resolveKeyName({'LeftArrow'});
+                keys.right = je.resolveKeyName({'RightArrow'});
+                keys.up = je.resolveKeyName({'UpArrow'});
+                keys.down = je.resolveKeyName({'DownArrow'});
+                keys.space = je.resolveKeyName({'space', 'SPACE'});
             end
 
             if isempty(sID)
@@ -512,18 +512,17 @@ classdef je
                 else
                     [keyIsDown, ~, keyCode] = KbCheck();
                     if keyIsDown
-                        key = find(keyCode, 1);
-                        if key == keys.left
+                        if je.isKeyPressed(keyCode, keys.left)
                             [offsetL, offsetR] = je.moveAlignmentOffset('left', opts.eyeAdjust, offsetL, offsetR);
-                        elseif key == keys.right
+                        elseif je.isKeyPressed(keyCode, keys.right)
                             [offsetL, offsetR] = je.moveAlignmentOffset('right', opts.eyeAdjust, offsetL, offsetR);
-                        elseif key == keys.up
+                        elseif je.isKeyPressed(keyCode, keys.up)
                             [offsetL, offsetR] = je.moveAlignmentOffset('up', opts.eyeAdjust, offsetL, offsetR);
-                        elseif key == keys.down
+                        elseif je.isKeyPressed(keyCode, keys.down)
                             [offsetL, offsetR] = je.moveAlignmentOffset('down', opts.eyeAdjust, offsetL, offsetR);
-                        elseif key == keys.space
+                        elseif je.isKeyPressed(keyCode, keys.space)
                             endTask = true;
-                        elseif key == keys.escape
+                        elseif je.isKeyPressed(keyCode, keys.escape)
                             ListenChar(0);
                             ShowCursor;
                             Screen('CloseAll');
@@ -717,8 +716,8 @@ classdef je
                 if ~keyIsDown
                     continue;
                 end
-                k = find(keyCode, 1);
-                if k == ptb.keyEscape
+
+                if je.isKeyPressed(keyCode, ptb.keyEscape)
                     Screen('CloseAll');
                     clear mex
                     doNext = false;
@@ -819,12 +818,46 @@ classdef je
             [keyIsDown, ~, keyCode] = KbCheck;
             buttons = struct();
             buttons.any = keyIsDown;
-            buttons.escape = keyCode(KbName('ESCAPE'));
-            buttons.space = keyCode(KbName('space'));
-            buttons.left = keyCode(KbName('LeftArrow'));
-            buttons.right = keyCode(KbName('RightArrow'));
-            buttons.up = keyCode(KbName('UpArrow'));
-            buttons.down = keyCode(KbName('DownArrow'));
+            buttons.escape = je.isKeyPressed(keyCode, je.resolveKeyName({'ESCAPE'}));
+            buttons.space = je.isKeyPressed(keyCode, je.resolveKeyName({'space', 'SPACE'}));
+            buttons.left = je.isKeyPressed(keyCode, je.resolveKeyName({'LeftArrow'}));
+            buttons.right = je.isKeyPressed(keyCode, je.resolveKeyName({'RightArrow'}));
+            buttons.up = je.isKeyPressed(keyCode, je.resolveKeyName({'UpArrow'}));
+            buttons.down = je.isKeyPressed(keyCode, je.resolveKeyName({'DownArrow'}));
+        end
+
+        function tf = isKeyPressed(keyCode, keyIndex)
+            tf = false;
+            if isempty(keyIndex)
+                return;
+            end
+
+            keyIndex = keyIndex(:)';
+            keyIndex = keyIndex(~isnan(keyIndex));
+            keyIndex = unique(round(keyIndex));
+            keyIndex = keyIndex(keyIndex >= 1 & keyIndex <= numel(keyCode));
+            if isempty(keyIndex)
+                return;
+            end
+
+            tf = any(keyCode(keyIndex));
+        end
+
+        function keyIndex = resolveKeyName(candidates)
+            keyIndex = [];
+            for i = 1:numel(candidates)
+                idx = KbName(candidates{i});
+                if isempty(idx)
+                    continue;
+                end
+
+                idx = idx(:)';
+                idx = idx(~isnan(idx));
+                if ~isempty(idx)
+                    keyIndex = idx;
+                    return;
+                end
+            end
         end
 
         function v = clampToUnit(v)
@@ -946,7 +979,7 @@ classdef je
         end
 
         ptb.flipTimestamp = Screen('Flip', ptb.win, ptb.flipTimestamp + ((display.updateFrames-0.5)*display.ifi));
-        je.abortIfEscape();
+        je.abortIfEscape(ptb.keyEscape);
     end
 
     timing = struct();
@@ -1246,9 +1279,13 @@ end
 
 
         end
-        function abortIfEscape()
+        function abortIfEscape(escapeKey)
+            if nargin < 1 || isempty(escapeKey)
+                escapeKey = je.resolveKeyName({'ESCAPE'});
+            end
+
             [keyIsDown, ~, keyCode] = KbCheck;
-            if keyIsDown && keyCode(KbName('ESCAPE'))
+            if keyIsDown && je.isKeyPressed(keyCode, escapeKey)
                 fprintf('Escape pressed — exiting.\n');
                 Screen('CloseAll');
                 clear mex

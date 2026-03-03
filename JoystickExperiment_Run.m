@@ -66,7 +66,6 @@ else
 end
 % ---------- PTB keyboard stuff -----------------------
 KbName('UnifyKeyNames');
-ESCAPE = KbName('ESCAPE');
 KbReleaseWait;
 
 % ---------- Gamma ----------
@@ -94,7 +93,7 @@ stim.spatial.innerRect = CenterRect([0 0 (fixPix-10) (fixPix-10)], ptb.winRect);
 % ---------- Run loop ----------
 stopAll = false;
 while ~stopAll
-    je.abortIfEscape();    
+    je.abortIfEscape(ptb.keyEscape);    
     runsComplete = sum(stim.data.runSaved);
     runIndex = runsComplete + 1;
     if runIndex > numel(stim.data.runSaved)
@@ -130,7 +129,7 @@ while ~stopAll
 
     % Progressive save
     save(fullfile(session.saveDir, session.outputFileBase), "stim");
-    je.abortIfEscape();
+    je.abortIfEscape(ptb.keyEscape);
     if runIndex >= numel(stim.data.runSaved)
         stopAll = true;
     end
