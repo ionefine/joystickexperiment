@@ -274,7 +274,7 @@ classdef je
 
             ptb.flipTimestamp = Screen('Flip', ptb.win);
             HideCursor;
-            ptb.keyEscape = je.resolveKeyName({'ESCAPE'});
+            ptb.keyEscape = KbName('ESCAPE');
 
             % -----------------------------
             % Thrustmaster / joystick input
@@ -312,11 +312,25 @@ classdef je
             end
         end
 
+        function tf = isWindowOpen(window)
+            tf = false;
+            if nargin < 1 || isempty(window) || ~isscalar(window)
+                return;
+            end
+
+            try
+                openWindows = Screen('Windows');
+                tf = any(openWindows == window);
+            catch
+                tf = false;
+            end
+        end
+
         function idx = selectJoystickIndex(gamepadNames)
             idx = [];
             for i = 1:numel(gamepadNames)
                 nm = lower(gamepadNames{i});
-                if contains(nm, 'thrustmaster', 'IgnoreCase', true) &&  ~contains(nm, 'key', 'IgnoreCase', true) 
+                if contains(nm, 'thrustmaster', 'IgnoreCase', true ) 
                     idx = i;
                     break;
                 end
@@ -375,7 +389,11 @@ classdef je
         % ===================== Alignment task =====================
         function [offsetL, offsetR] = alignmentTask(whichStimuli, sID, varargin)
             opts = je.parseAlignmentOptions(varargin{:});
-            usingExternalWindow = ~isempty(opts.window) && isnumeric(opts.window) && isscalar(opts.window);
+            usingExternalWindow = ~isempty(opts.window) && opts.window > 0;
+
+            screenRes = Screen('Rect', 0);
+            screenRes(3) = screenRes(3)/2;
+            screenCtr = screenRes(3:4)/2;
             stereoMode = 4;
 
             [penWidth, crossLength, boxSize] = je.alignmentStimulusParams(whichStimuli);
@@ -396,12 +414,11 @@ classdef je
                 joystickMiddle = 128;
             else
                 KbName('UnifyKeyNames');
-                keys.escape = je.resolveKeyName({'ESCAPE'});
-                keys.left = je.resolveKeyName({'LeftArrow'});
-                keys.right = je.resolveKeyName({'RightArrow'});
-                keys.up = je.resolveKeyName({'UpArrow'});
-                keys.down = je.resolveKeyName({'DownArrow'});
-                keys.space = je.resolveKeyName({'space', 'SPACE'});
+                keys.escape = KbName('ESCAPE');
+                keys.left = KbName('LeftArrow');
+                keys.right = KbName('RightArrow');
+                keys.up = KbName('UpArrow');
+                keys.down = KbName('DownArrow');
             end
 
             if isempty(sID)
@@ -436,6 +453,10 @@ classdef je
 
             if usingExternalWindow
                 window = opts.window;
+                if ~je.isWindowOpen(window)
+                    error(['Alignment task expected an open PTB window, but the provided window handle is closed. ' ...
+                        'Reinitialize PTB before running nonius alignment.']);
+                end
                 if isempty(opts.ifi)
                     ifi = Screen('GetFlipInterval', window);
                 else
@@ -445,11 +466,6 @@ classdef je
                 [window, ~] = Screen('OpenWindow', 0, grey, [], [], [], stereoMode);
                 ifi = Screen('GetFlipInterval', window);
             end
-
-            % Always derive drawing geometry from the active PTB window.
-            screenRes = Screen('Rect', window);
-            screenCtr = [screenRes(3)/2, screenRes(4)/2];
-
             waitframes = 1;
 
             nPatternDots = 800;
@@ -512,22 +528,17 @@ classdef je
                 else
                     [keyIsDown, ~, keyCode] = KbCheck();
                     if keyIsDown
-                        if je.isKeyPressed(keyCode, keys.left)
+                        key = find(keyCode, 1);
+                        if key == keys.left
                             [offsetL, offsetR] = je.moveAlignmentOffset('left', opts.eyeAdjust, offsetL, offsetR);
-                        elseif je.isKeyPressed(keyCode, keys.right)
+                        elseif key == keys.right
                             [offsetL, offsetR] = je.moveAlignmentOffset('right', opts.eyeAdjust, offsetL, offsetR);
-                        elseif je.isKeyPressed(keyCode, keys.up)
+                        elseif key == keys.up
                             [offsetL, offsetR] = je.moveAlignmentOffset('up', opts.eyeAdjust, offsetL, offsetR);
-                        elseif je.isKeyPressed(keyCode, keys.down)
+                        elseif key == keys.down
                             [offsetL, offsetR] = je.moveAlignmentOffset('down', opts.eyeAdjust, offsetL, offsetR);
-                        elseif je.isKeyPressed(keyCode, keys.space)
+                        elseif key == keys.escape
                             endTask = true;
-                        elseif je.isKeyPressed(keyCode, keys.escape)
-                            ListenChar(0);
-                            ShowCursor;
-                            Screen('CloseAll');
-                            clear mex
-                            error('UserAbort:Escape', 'User aborted with Escape key during alignment');
                         end
                     end
                 end
@@ -549,7 +560,7 @@ classdef je
 
         function opts = parseAlignmentOptions(varargin)
             opts = struct('eyeAdjust', [], 'useBgPattern', [], 'addFlicker', 'n', 'useJoystick', 'n', ...
-                'window', [], 'ifi', [], 'winRect', []);
+                'window', [], 'ifi', []);
             i = 1;
             while i <= numel(varargin)
                 key = string(varargin{i});
@@ -570,8 +581,6 @@ classdef je
                         opts.window = value;
                     case "ifi"
                         opts.ifi = value;
-                    case "winrect"
-                        opts.winRect = value;
                 end
                 i = i + 2;
             end
@@ -716,8 +725,8 @@ classdef je
                 if ~keyIsDown
                     continue;
                 end
-
-                if je.isKeyPressed(keyCode, ptb.keyEscape)
+                k = find(keyCode, 1);
+                if k == ptb.keyEscape
                     Screen('CloseAll');
                     clear mex
                     doNext = false;
@@ -802,10 +811,10 @@ classdef je
                 j = ptb.joystickIndex;
 
                 ax = ptb.input.axisMap;
-                 state.x = Gamepad('GetAxis', j, ax.x);
+                state.x = Gamepad('GetAxis', j, ax.x);
                 state.y = Gamepad('GetAxis', j, ax.y);
 
-                slider = Gamepad('GetAxis', j, 5);
+                slider = Gamepad('GetAxis', j, ax.slider);
                 state.slider01 = je.normalizeSlider01(slider);
 
                 state.joystickButtons = [];
@@ -818,46 +827,12 @@ classdef je
             [keyIsDown, ~, keyCode] = KbCheck;
             buttons = struct();
             buttons.any = keyIsDown;
-            buttons.escape = je.isKeyPressed(keyCode, je.resolveKeyName({'ESCAPE'}));
-            buttons.space = je.isKeyPressed(keyCode, je.resolveKeyName({'space', 'SPACE'}));
-            buttons.left = je.isKeyPressed(keyCode, je.resolveKeyName({'LeftArrow'}));
-            buttons.right = je.isKeyPressed(keyCode, je.resolveKeyName({'RightArrow'}));
-            buttons.up = je.isKeyPressed(keyCode, je.resolveKeyName({'UpArrow'}));
-            buttons.down = je.isKeyPressed(keyCode, je.resolveKeyName({'DownArrow'}));
-        end
-
-        function tf = isKeyPressed(keyCode, keyIndex)
-            tf = false;
-            if isempty(keyIndex)
-                return;
-            end
-
-            keyIndex = keyIndex(:)';
-            keyIndex = keyIndex(~isnan(keyIndex));
-            keyIndex = unique(round(keyIndex));
-            keyIndex = keyIndex(keyIndex >= 1 & keyIndex <= numel(keyCode));
-            if isempty(keyIndex)
-                return;
-            end
-
-            tf = any(keyCode(keyIndex));
-        end
-
-        function keyIndex = resolveKeyName(candidates)
-            keyIndex = [];
-            for i = 1:numel(candidates)
-                idx = KbName(candidates{i});
-                if isempty(idx)
-                    continue;
-                end
-
-                idx = idx(:)';
-                idx = idx(~isnan(idx));
-                if ~isempty(idx)
-                    keyIndex = idx;
-                    return;
-                end
-            end
+            buttons.escape = keyCode(KbName('ESCAPE'));
+            buttons.space = keyCode(KbName('space'));
+            buttons.left = keyCode(KbName('LeftArrow'));
+            buttons.right = keyCode(KbName('RightArrow'));
+            buttons.up = keyCode(KbName('UpArrow'));
+            buttons.down = keyCode(KbName('DownArrow'));
         end
 
         function v = clampToUnit(v)
@@ -979,7 +954,7 @@ classdef je
         end
 
         ptb.flipTimestamp = Screen('Flip', ptb.win, ptb.flipTimestamp + ((display.updateFrames-0.5)*display.ifi));
-        je.abortIfEscape(ptb.keyEscape);
+        je.abortIfEscape();
     end
 
     timing = struct();
@@ -1279,13 +1254,9 @@ end
 
 
         end
-        function abortIfEscape(escapeKey)
-            if nargin < 1 || isempty(escapeKey)
-                escapeKey = je.resolveKeyName({'ESCAPE'});
-            end
-
+        function abortIfEscape()
             [keyIsDown, ~, keyCode] = KbCheck;
-            if keyIsDown && je.isKeyPressed(keyCode, escapeKey)
+            if keyIsDown && keyCode(KbName('ESCAPE'))
                 fprintf('Escape pressed — exiting.\n');
                 Screen('CloseAll');
                 clear mex

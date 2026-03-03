@@ -6,18 +6,18 @@ opts = struct();
 
 % ---------- Control mode ----------
 
-opts.user_controlled     = false;   % joystick drives contrast live
+opts.user_controlled     = true;   % joystick drives contrast live
 opts.isBinocularPlayback = false;  % if true does a prolonged set of binocular cycles
 opts.enableFeedback      = true;
-opts.feedbackErrorThresh = 0.25;
-opts.responseLagWindowSec = [0 0.65]; % acceptable participant motor/response lag window (s)
-opts.numRuns             = 2;     % cap number of runs
+opts.feedbackErrorThresh = 0.2;
 opts.nonius = true ;
-% ---------- Control mode ----------
-
-opts.assertTol           = 1e-10;  % float tolerance for sanity check
+opts.responseLagWindowSec = [0 0.5]; % acceptable participant motor/response lag window (s)
 
 opts.stimulusType       = 'movie folder'; % options: 'movie folder' (default) or 'single movie'
+
+opts.numRuns             = 10;     % cap number of runs
+opts.assertTol           = 1e-10;  % float tolerance for sanity check
+
 % user-controlled mode is binocular playback only
 if opts.user_controlled
     opts.isBinocularPlayback = true;
@@ -66,10 +66,12 @@ else
 end
 % ---------- PTB keyboard stuff -----------------------
 KbName('UnifyKeyNames');
+ESCAPE = KbName('ESCAPE');
 KbReleaseWait;
 
 % ---------- Gamma ----------
 gammaTable = je.loadGammaTable(paths.gammaTableFile);
+
 
 % ---------- PTB init ----------
 [display, ptb] = je.initPtb(display, stim.fix.textSizePt, gammaTable);
@@ -77,14 +79,11 @@ if opts.nonius
     [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
         'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
         'useBgPattern', 'y', 'useJoystick', 'n', ...
-        'window', ptb.win, 'ifi', display.ifi, 'winRect', ptb.winRect);
-
-    Screen('Close All');
-    [display, ptb] = je.initPtb(display, stim.fix.textSizePt, gammaTable);
+        'window', ptb.win, 'ifi', display.ifi);
 end
 
 audio = je.initFeedbackAudio(stim.tone);
-cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio));
+cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio)); %#ok<NASGU>
 % ------------ Generate stimuli------------------
 stim = je.generateStimulusTimeCourses(stim, display, opts);
 
@@ -96,7 +95,7 @@ stim.spatial.innerRect = CenterRect([0 0 (fixPix-10) (fixPix-10)], ptb.winRect);
 % ---------- Run loop ----------
 stopAll = false;
 while ~stopAll
-    je.abortIfEscape(ptb.keyEscape);    
+    je.abortIfEscape();    
     runsComplete = sum(stim.data.runSaved);
     runIndex = runsComplete + 1;
     if runIndex > numel(stim.data.runSaved)
@@ -132,7 +131,7 @@ while ~stopAll
 
     % Progressive save
     save(fullfile(session.saveDir, session.outputFileBase), "stim");
-    je.abortIfEscape(ptb.keyEscape);
+    je.abortIfEscape();
     if runIndex >= numel(stim.data.runSaved)
         stopAll = true;
     end
@@ -151,6 +150,5 @@ if opts.isBinocularPlayback
         end
     end
 end
-Screen('CloseAll');
 
 save(fullfile(session.saveDir, session.outputFileBase), "stim", "display", "opts", "session", "ptb", "audio", "gammaTable");
