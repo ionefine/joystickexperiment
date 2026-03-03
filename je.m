@@ -312,20 +312,6 @@ classdef je
             end
         end
 
-        function tf = isWindowOpen(window)
-            tf = false;
-            if nargin < 1 || isempty(window) || ~isscalar(window)
-                return;
-            end
-
-            try
-                openWindows = Screen('Windows');
-                tf = any(openWindows == window);
-            catch
-                tf = false;
-            end
-        end
-
         function idx = selectJoystickIndex(gamepadNames)
             idx = [];
             for i = 1:numel(gamepadNames)
@@ -391,7 +377,11 @@ classdef je
             opts = je.parseAlignmentOptions(varargin{:});
             usingExternalWindow = ~isempty(opts.window) && opts.window > 0;
 
-            screenRes = Screen('Rect', 0);
+            if ~isempty(opts.winRect)
+                screenRes = opts.winRect;
+            else
+                screenRes = Screen('Rect', 0);
+            end
             screenRes(3) = screenRes(3)/2;
             screenCtr = screenRes(3:4)/2;
             stereoMode = 4;
@@ -453,10 +443,6 @@ classdef je
 
             if usingExternalWindow
                 window = opts.window;
-                if ~je.isWindowOpen(window)
-                    error(['Alignment task expected an open PTB window, but the provided window handle is closed. ' ...
-                        'Reinitialize PTB before running nonius alignment.']);
-                end
                 if isempty(opts.ifi)
                     ifi = Screen('GetFlipInterval', window);
                 else
@@ -560,7 +546,7 @@ classdef je
 
         function opts = parseAlignmentOptions(varargin)
             opts = struct('eyeAdjust', [], 'useBgPattern', [], 'addFlicker', 'n', 'useJoystick', 'n', ...
-                'window', [], 'ifi', []);
+                'window', [], 'ifi', [], 'winRect', []);
             i = 1;
             while i <= numel(varargin)
                 key = string(varargin{i});
@@ -581,6 +567,8 @@ classdef je
                         opts.window = value;
                     case "ifi"
                         opts.ifi = value;
+                    case "winrect"
+                        opts.winRect = value;
                 end
                 i = i + 2;
             end
