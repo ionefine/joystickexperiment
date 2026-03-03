@@ -375,8 +375,7 @@ classdef je
         % ===================== Alignment task =====================
         function [offsetL, offsetR] = alignmentTask(whichStimuli, sID, varargin)
             opts = je.parseAlignmentOptions(varargin{:});
-            usingExternalWindow = ~isempty(opts.window);
-
+            usingExternalWindow = ~isempty(opts.window) && isnumeric(opts.window) && isscalar(opts.window);
             stereoMode = 4;
 
             [penWidth, crossLength, boxSize] = je.alignmentStimulusParams(whichStimuli);
