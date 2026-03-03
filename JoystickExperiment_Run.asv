@@ -1,5 +1,6 @@
 
 clear
+clear mex
 % ---------- Options ----------
 opts = struct();
 
@@ -9,48 +10,26 @@ opts.user_controlled     = true;   % joystick drives contrast live
 opts.isBinocularPlayback = false;  % if true does a prolonged set of binocular cycles
 opts.enableFeedback      = true;
 opts.feedbackErrorThresh = 0.2;
-opts.nonius = true ;
 opts.responseLagWindowSec = [0 0.5]; % acceptable participant motor/response lag window (s)
+opts.numRuns             = 10;     % cap number of runs
+
+% ---------- a few other parameters ----------
 
 opts.stimulusType       = 'movie folder'; % options: 'movie folder' (default) or 'single movie'
+opts.nonius = false ;
 
-opts.numRuns             = 10;     % cap number of runs
-opts.assertTol           = 1e-10;  % float tolerance for sanity check
-
-% user-controlled mode is binocular playback only
+% ensure that user-controlled mode is binocular playback only
 if opts.user_controlled
     opts.isBinocularPlayback = true;
     opts.enableFeedback = false;
 end
-
-if ~islogical(opts.user_controlled) || ~isscalar(opts.user_controlled)
-    error('opts.user_controlled must be a logical scalar.');
-end
-
-% ---------- Contrast mapping ----------
-opts.contrast.min   = 0.0;
-opts.contrast.max   = 1.0;
-opts.contrast.start = 0.5;
-
-% Which joystick control drives contrast:
-% 'slider' uses state.slider01 (already normalized 0..1)
-% 'x' or 'y' uses state.x/state.y (-1..1) mapped to 0..1
-opts.joy.control = 'slider';
-opts.joy.deadzone  = 0.00;
-opts.joy.invert    = false;
-
-% Optional shaping
-opts.joy.smoothing  = 0.15;  % EMA alpha; 0=no smoothing
-opts.contrast.start = 0.5;
-
-%--------------Paths
 
 paths = je.defaultPaths();
 cd(paths.homeDir);
 addpath(paths.homeDir);
 
 % ---------- Params ----------
-[stim, display] = je.joystickPsychoParams(opts);
+[stim, display,opts] = je.setupParams(opts);
 
 % ---------- Session info ----------
 session = je.promptSessionInfo(paths.homeDir, opts);
@@ -61,19 +40,22 @@ if opts.isBinocularPlayback
     stim.data.runSaved = false(1, opts.numRuns);
     stim.data.created  = datestr(now);
 else
-    stim = je.makeJoystickPsychoConditions(stim,  opts.numRuns);
+    stim = je.makeConditions(stim,  opts.numRuns);
 end
-% ---------- PTB keyboard stuff -----------------------
+
+% ---------- PTB keyboard stuff & audio-----------------------
 KbName('UnifyKeyNames');
 ESCAPE = KbName('ESCAPE');
 KbReleaseWait;
+audio = je.initAudio(stim.tone);
 
-% ---------- Gamma ----------
-gammaTable = je.loadGammaTable(paths.gammaTableFile);
 
 
 % ---------- PTB init ----------
 [display, ptb] = je.initPtb(display, stim.fix.textSizePt, gammaTable);
+gammaTable = je.loadGammaTable(paths.gammaTableFile);
+
+
 if opts.nonius
     [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
         'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
@@ -81,7 +63,6 @@ if opts.nonius
         'window', ptb.win, 'ifi', display.ifi);
 end
 
-audio = je.initFeedbackAudio(stim.tone);
 %cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio));
 % ------------ Generate stimuli------------------
 stim = je.generateStimulusTimeCourses(stim, display, opts);
@@ -94,7 +75,8 @@ stim.spatial.innerRect = CenterRect([0 0 (fixPix-10) (fixPix-10)], ptb.winRect);
 % ---------- Run loop ----------
 stopAll = false;
 while ~stopAll
-    je.abortIfEscape();    runsComplete = sum(stim.data.runSaved);
+    je.abortIfEscape();    
+    runsComplete = sum(stim.data.runSaved);
     runIndex = runsComplete + 1;
     if runIndex > numel(stim.data.runSaved)
         break;

@@ -10,48 +10,34 @@ opts.user_controlled     = true;   % joystick drives contrast live
 opts.isBinocularPlayback = false;  % if true does a prolonged set of binocular cycles
 opts.enableFeedback      = true;
 opts.feedbackErrorThresh = 0.2;
-opts.nonius = true ;
 opts.responseLagWindowSec = [0 0.5]; % acceptable participant motor/response lag window (s)
+opts.numRuns             = 10;     % cap number of runs
+
+% ---------- a few other parameters ----------
 
 opts.stimulusType       = 'movie folder'; % options: 'movie folder' (default) or 'single movie'
+opts.alignment = true ;
 
-opts.numRuns             = 10;     % cap number of runs
-opts.assertTol           = 1e-10;  % float tolerance for sanity check
-
-% user-controlled mode is binocular playback only
+% ensure that user-controlled mode is binocular playback only
 if opts.user_controlled
     opts.isBinocularPlayback = true;
     opts.enableFeedback = false;
 end
 
-if ~islogical(opts.user_controlled) || ~isscalar(opts.user_controlled)
-    error('opts.user_controlled must be a logical scalar.');
-end
-
-% ---------- Contrast mapping ----------
-opts.contrast.min   = 0.0;
-opts.contrast.max   = 1.0;
-opts.contrast.start = 0.5;
-
-% Which joystick control drives contrast:
-% 'slider' uses state.slider01 (already normalized 0..1)
-% 'x' or 'y' uses state.x/state.y (-1..1) mapped to 0..1
-opts.joy.control = 'slider';
-opts.joy.deadzone  = 0.00;
-opts.joy.invert    = false;
-
-% Optional shaping
-opts.joy.smoothing  = 0.15;  % EMA alpha; 0=no smoothing
-opts.contrast.start = 0.5;
-
-%--------------Paths
+KbName('UnifyKeyNames');
+opts.key.escape = KbName('ESCAPE');
+opts.key.left = KbName('LeftArrow');
+opts.key.right = KbName('RightArrow');
+opts.key.up = KbName('UpArrow');
+opts.key.down = KbName('DownArrow');
+opts.key.space = KbName('space');
 
 paths = je.defaultPaths();
 cd(paths.homeDir);
 addpath(paths.homeDir);
 
 % ---------- Params ----------
-[stim, display] = je.joystickPsychoParams(opts);
+[stim, display,opts] = je.setupParams(opts);
 
 % ---------- Session info ----------
 session = je.promptSessionInfo(paths.homeDir, opts);
@@ -62,35 +48,33 @@ if opts.isBinocularPlayback
     stim.data.runSaved = false(1, opts.numRuns);
     stim.data.created  = datestr(now);
 else
-    stim = je.makeJoystickPsychoConditions(stim,  opts.numRuns);
+    stim = je.makeConditions(stim,  opts.numRuns);
 end
-% ---------- PTB keyboard stuff -----------------------
-KbName('UnifyKeyNames');
-ESCAPE = KbName('ESCAPE');
-KbReleaseWait;
 
-% ---------- Gamma ----------
+% ---------- PTB keyboard stuff & audio-----------------------
+KbReleaseWait;
+audio = je.initAudio(stim.tone);
 gammaTable = je.loadGammaTable(paths.gammaTableFile);
 
 
 % ---------- PTB init ----------
-[display, ptb] = je.initPtb(display, stim.fix.textSizePt, gammaTable);
-if opts.nonius
+display = je.initPtbScreen(display, stim.fix.textSizePt, gammaTable);
+joy = je.initPtbJoystick;
+
+
+% ---------- nonius task ----------
+if opts.alignment
     [session.offsetLeft, session.offsetRight] = je.alignmentTask( ...
-        'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
-        'useBgPattern', 'y', 'useJoystick', 'n', ...
-        'window', ptb.win, 'ifi', display.ifi);
+        session.subjectId, display,opts)
 end
 
-audio = je.initFeedbackAudio(stim.tone);
-%cleanupObj = onCleanup(@() je.safeCleanup(ptb, audio));
 % ------------ Generate stimuli------------------
 stim = je.generateStimulusTimeCourses(stim, display, opts);
 
 % ---------- Fixation geometry ----------
 fixPix = je.angle2pix(display, 0.25);
-stim.spatial.outerRect = CenterRect([0 0 fixPix fixPix], ptb.winRect);
-stim.spatial.innerRect = CenterRect([0 0 (fixPix-10) (fixPix-10)], ptb.winRect);
+stim.spatial.outerRect = CenterRect([0 0 fixPix fixPix], display.winRect);
+stim.spatial.innerRect = CenterRect([0 0 (fixPix-10) (fixPix-10)], display.winRect);
 
 % ---------- Run loop ----------
 stopAll = false;
@@ -104,18 +88,18 @@ while ~stopAll
 
     [vidObj, movieName] = je.openMovieForRun(runIndex, session);
     stim = je.computeMovieRects( ...
-        vidObj, display, stim, ptb.winRect);
+        vidObj, display, stim, display.winRect);
 
-    je.showInterRunScreen(ptb, session, runsComplete, numel(stim.data.runSaved), stim, display, opts);
+    je.showInterRunScreen(session, runsComplete, numel(stim.data.runSaved), stim, display, opts);
 
-    doNext = je.waitForNextRunOrQuit(ptb);
+    doNext = je.waitForNextRunOrQuit(opts);
     if ~doNext
         stopAll = true;
         break;
     end
 
     [resp, timing] = je.playMovieAndCollectResponses( ...
-        ptb, audio,stim, session, opts, display, vidObj, runIndex)
+        audio, joy, stim, session, opts, display, vidObj, runIndex)
 
 
     fprintf('Duration: %5.2f sec\n', timing.actualSec);
@@ -151,4 +135,4 @@ if opts.isBinocularPlayback
     end
 end
 
-save(fullfile(session.saveDir, session.outputFileBase), "stim", "display", "opts", "session", "ptb", "audio", "gammaTable");
+save(fullfile(session.saveDir, session.outputFileBase), "stim", "display", "opts", "session", "joy", "audio", "gammaTable");

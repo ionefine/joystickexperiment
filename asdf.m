@@ -1,0 +1,2 @@
+Screen("CloseAll");
+clear mex
