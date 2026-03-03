@@ -402,6 +402,7 @@ classdef je
                 keys.right = KbName('RightArrow');
                 keys.up = KbName('UpArrow');
                 keys.down = KbName('DownArrow');
+                keys.space = KbName('space');
             end
 
             if isempty(sID)
@@ -521,8 +522,14 @@ classdef je
                             [offsetL, offsetR] = je.moveAlignmentOffset('up', opts.eyeAdjust, offsetL, offsetR);
                         elseif key == keys.down
                             [offsetL, offsetR] = je.moveAlignmentOffset('down', opts.eyeAdjust, offsetL, offsetR);
-                        elseif key == keys.escape
+                        elseif key == keys.space
                             endTask = true;
+                        elseif key == keys.escape
+                            ListenChar(0);
+                            ShowCursor;
+                            Screen('CloseAll');
+                            clear mex
+                            error('UserAbort:Escape', 'User aborted with Escape key during alignment');
                         end
                     end
                 end
