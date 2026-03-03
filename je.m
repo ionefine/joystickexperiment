@@ -180,7 +180,7 @@ classdef je
                 if ~strcmp(reply, 'y')
                     error('Experiment cancelled by user.');
                 end
-                gammaTable = repmat(linspace(0, 1, 256)', 1, 3);
+                gammaTable = reshape(linspace(0, 1, 256), 256, 1);
             end
         end
 
@@ -262,7 +262,7 @@ classdef je
             display.resolutionPx = [ptb.winRect(3) ptb.winRect(4)];
             % Gamma
             if nargin >= 3 && ~isempty(gammaTable)
-                Screen('LoadNormalizedGammaTable', ptb.win, gammaTable);
+                Screen('LoadNormalizedGammaTable', ptb.win, repmat(gammaTable, 1, 3));
             end
 
             Screen('BlendFunction', ptb.win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -316,7 +316,7 @@ classdef je
             idx = [];
             for i = 1:numel(gamepadNames)
                 nm = lower(gamepadNames{i});
-                if contains(nm, 'thrustmaster') && (contains(nm, 'pro') || contains(nm, 't.16000m') || contains(nm, '16000'))
+                if contains(nm, 'thrustmaster', 'IgnoreCase', true ) 
                     idx = i;
                     break;
                 end
