@@ -78,6 +78,9 @@ if opts.nonius
         'cornermatch', session.subjectId, 'eyeAdjust', 'r', ...
         'useBgPattern', 'y', 'useJoystick', 'n', ...
         'window', ptb.win, 'ifi', display.ifi, 'winRect', ptb.winRect);
+
+    Screen('Close All');
+    [display, ptb] = je.initPtb(display, stim.fix.textSizePt, gammaTable);
 end
 
 audio = je.initFeedbackAudio(stim.tone);
