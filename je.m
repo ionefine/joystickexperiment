@@ -452,6 +452,11 @@ classdef je
                 [window, ~] = Screen('OpenWindow', 0, grey, [], [], [], stereoMode);
                 ifi = Screen('GetFlipInterval', window);
             end
+
+            % Always derive drawing geometry from the active PTB window.
+            screenRes = Screen('Rect', window);
+            screenCtr = [screenRes(3)/2, screenRes(4)/2];
+
             waitframes = 1;
 
             nPatternDots = 800;
