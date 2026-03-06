@@ -16,6 +16,8 @@ dataType = 'psychophysics_bandpass';
 stimulusType = 'congruent';
 defaultOutputRoot = 'output';
 
+je.setPopupLocation([355 901]);
+
 % Let the user choose the output folder to analyse.
 outputRoot = uigetdir(defaultOutputRoot, 'Select folder that contains participant output files');
 if isequal(outputRoot, 0)

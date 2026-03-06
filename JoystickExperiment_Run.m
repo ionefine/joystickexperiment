@@ -39,6 +39,8 @@ addpath(paths.homeDir);
 % ---------- Params ----------
 [stim, display,opts] = je.setupParams(opts);
 
+je.setPopupLocation([355 901]);
+
 % ---------- Session info ----------
 session = je.promptSessionInfo(paths.homeDir, opts);
 session.saveDir = je.ensureOutputDir(session.subjectId, paths.homeDir);

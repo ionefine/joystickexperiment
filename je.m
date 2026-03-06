@@ -12,6 +12,25 @@ classdef je
 
     methods (Static)
 
+        function setPopupLocation(topLeftPx)
+            % Configure MATLAB figure-based dialogs to open from a consistent top-left corner.
+            % topLeftPx is [x y] in screen coordinates measured from the top-left.
+            if nargin < 1 || numel(topLeftPx) ~= 2
+                topLeftPx = [355 901];
+            end
+
+            screenSizePx = get(groot, 'ScreenSize'); % [left bottom width height]
+            defaultPos = get(groot, 'DefaultFigurePosition');
+
+            x = topLeftPx(1);
+            yTop = topLeftPx(2);
+            yBottom = screenSizePx(4) - yTop - defaultPos(4);
+            yBottom = max(screenSizePx(2), yBottom);
+
+            set(groot, 'DefaultFigureUnits', 'pixels');
+            set(groot, 'DefaultFigurePosition', [x yBottom defaultPos(3) defaultPos(4)]);
+        end
+
         % ===================== Params =====================
         function [stim, display, opts] = setupParams(opts)
             % Refactor of the JoystickPsychoParams script (function-like, no workspace side effects)
@@ -99,6 +118,7 @@ classdef je
         % ===================== Session =====================
         function session = promptSessionInfo(homeDir, opts)
             session = struct();
+            je.setPopupLocation([355 901]);
 
             diagnosisOptions = {'normally sighted', 'amblyopic', 'binocular disorder'};
             diagnosisPrefix = {'NS', 'AMB', 'BD'};
